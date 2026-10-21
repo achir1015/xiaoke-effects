@@ -1,4 +1,5 @@
 # 小柯機器人動態圖形和視覺特效工具
+<img width="1916" height="1079" alt="image" src="https://github.com/user-attachments/assets/92a68dd3-9313-4953-bae8-bab9b0459d47" />
 
 免費的動態圖形（Motion Graphics）與視覺特效（VFX）合成工具。參考開源專案 [EffectCraft](https://github.com/storytold/effectcraft) 的功能與操作方式，以 JavaScript／WebGL 重新撰寫，介面支援 13 種語言，手機、平板也能用。
 
