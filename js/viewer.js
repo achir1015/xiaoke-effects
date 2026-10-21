@@ -21,7 +21,7 @@ export const getRes = () => lastRes;
 export function fit() {
   const c = comp(); if (!c) return;
   const r = wrap.getBoundingClientRect();
-  const pad = r.width < 500 ? 8 : 28;
+  const pad = r.width < 500 ? 4 : 28;
   const z = Math.min((r.width - pad * 2) / c.w, (r.height - pad * 2) / c.h);
   view = { z: Math.max(0.02, z), x: (r.width - c.w * z) / 2, y: (r.height - c.h * z) / 2 };
 }

@@ -309,6 +309,8 @@ function buildCompTabs() {
     b.addEventListener('auxclick', e => { if (e.button === 1) { S.openComps = S.openComps.filter(x => x !== id); buildCompTabs(); } });
     el.append(b);
   }
+  el.classList.toggle('single', S.openComps.length <= 1);
+  $('pViewer').classList.toggle('tall', !!comp() && comp().h > comp().w);
   const vt = $('viewerTabs'); vt.innerHTML = '';
   vt.append(h('button', { class: 'ptab on' }, t('composition') + (comp() ? ': ' + comp().name : '')));
 }
