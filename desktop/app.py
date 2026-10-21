@@ -89,6 +89,13 @@ class AppInfo:
         return d
 
     @staticmethod
+    def shared_dir() -> Path:
+        """小柯共用動畫素材：小柯特效匯出、小柯影音剪輯助手讀取（兩個 App 都用這個資料夾）"""
+        d = Path(os.environ["XKE_SHARED_DIR"]) if os.environ.get("XKE_SHARED_DIR") else Path.home() / ("Movies" if IS_MAC else "Videos") / "小柯動畫素材"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    @staticmethod
     def default_save_dir() -> Path:
         d = Path.home() / ("Movies" if IS_MAC else "Videos") / APP_NAME
         try:
@@ -203,8 +210,9 @@ class LocalServer:
 
 # ---------------------------------------------------------------- 存檔
 class SaveSession:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, sidecar: str = ""):
         self.path = path
+        self.sidecar = sidecar   # 共用動畫：存完再寫旁邊的 .json 說明檔
         self.tmp = path.with_name(path.name + ".part")
         self.fh = open(self.tmp, "wb")
         self.size = 0
@@ -220,6 +228,8 @@ class SaveSession:
         if self.path.exists():
             self.path.unlink()
         self.tmp.rename(self.path)
+        if self.sidecar:
+            Path(str(self.path) + ".json").write_text(self.sidecar, encoding="utf-8")
         return self.path
 
 
@@ -315,6 +325,58 @@ class DesktopBridge:
             return {"status": "ok", "token": token, "path": str(path)}
         except Exception as e:
             return {"status": "error", "message": str(e)}
+
+    # ---- 共用動畫素材（給小柯影音剪輯助手）----
+    def shared_begin(self, filename: str, meta_json: str):
+        try:
+            d = AppInfo.shared_dir()
+            base = "".join(c for c in str(filename) if c not in '\\/:*?"<>|').strip() or "animation.webm"
+            stem, ext = os.path.splitext(base)
+            path, n = d / base, 2
+            while path.exists():
+                path, n = d / f"{stem} ({n}){ext}", n + 1
+            meta = json.loads(meta_json or "{}")
+            meta["file"] = path.name
+            token = uuid.uuid4().hex
+            self._sessions[token] = SaveSession(path, json.dumps(meta, ensure_ascii=False))
+            return {"status": "ok", "token": token, "path": str(path)}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def shared_list(self):
+        items = []
+        try:
+            d = AppInfo.shared_dir()
+            for p in sorted(d.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+                if p.suffix.lower() not in (".webm", ".mp4") or not p.is_file():
+                    continue
+                meta = {}
+                side = Path(str(p) + ".json")
+                if side.is_file():
+                    try:
+                        meta = json.loads(side.read_text(encoding="utf-8"))
+                    except Exception:
+                        meta = {}
+                meta.update({"file": p.name, "path": str(p), "size": p.stat().st_size})
+                meta.setdefault("name", p.stem)
+                items.append(meta)
+            return {"status": "ok", "dir": str(d), "items": items}
+        except Exception as e:
+            return {"status": "error", "message": str(e), "items": items}
+
+    def shared_delete(self, filename: str):
+        try:
+            d = AppInfo.shared_dir()
+            p = (d / Path(str(filename)).name)
+            for f in (p, Path(str(p) + ".json")):
+                if f.is_file():
+                    f.unlink()
+            return {"status": "ok"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def open_shared_dir(self):
+        return self.open_folder(str(AppInfo.shared_dir()))
 
     def write_chunk(self, token: str, b64: str):
         s = self._sessions.get(token)
@@ -546,8 +608,9 @@ def main():
         i = args.index("--selftest")
         selftest = Path(args[i + 1] if i + 1 < len(args) else "selftest.json").resolve()
         selftest.parent.mkdir(parents=True, exist_ok=True)
-        # 測試用獨立的資料夾與埠號，不影響使用者正在開的小柯特效
+        # 測試用獨立的資料夾與埠號，不影響使用者正在開的小柯特效（共用動畫資料夾也換成測試用的）
         os.environ.setdefault("XKE_DATA_DIR", str(selftest.parent / "data"))
+        os.environ.setdefault("XKE_SHARED_DIR", str(selftest.parent / "shared"))
         global HTTP_PORT
         HTTP_PORT = int(os.environ.get("XKE_PORT") or 48141)
 

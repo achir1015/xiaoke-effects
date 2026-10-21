@@ -120,3 +120,41 @@ export function aboutDialog() {
       h('li', null, 'mediabunny — MPL-2.0'), h('li', null, 'gifenc — MIT'), h('li', null, 'lottie-web — MIT'), h('li', null, 'Google Fonts — OFL'))),
   [{ label: t('close'), primary: true }]);
 }
+
+// 匯出到小柯影音剪輯助手：選大小、範圍、透明背景；下面列出已經送過去的動畫（可刪除）
+export async function toVideoDialog(c) {
+  const { listShared, deleteShared, sharedMode, sameSiteAsVideo } = await import('./shared.js');
+  const name = h('input', { value: c.name, style: { width: '100%' }, onkeydown: e => e.stopPropagation() });
+  const sizes = [['720', `720p（${Math.round(c.w * 720 / c.h)}×720）`], ['1080', `1080p（${Math.round(c.w * 1080 / c.h)}×1080）`], ['full', `${t('full')}（${c.w}×${c.h}）`], ['half', `${t('half')}（${Math.round(c.w / 2)}×${Math.round(c.h / 2)}）`]];
+  const size = sel(sizes, c.h > 1080 ? '1080' : 'full', () => { });
+  const range = sel([['work', `${t('workArea')}（${timecode(c.workIn, c.fps)} – ${timecode(c.workOut, c.fps)}）`], ['full', t('fullComp')]], c.workIn > 0 || c.workOut < c.duration ? 'work' : 'full', () => { });
+  const alpha = h('input', { type: 'checkbox', checked: true });
+  const mode = sharedMode();
+  const where = h('p', { class: 'small dim' }, t('tvWhere_' + mode));
+  if (mode === 'idb' && !sameSiteAsVideo()) where.append(h('br'), h('span', { style: { color: 'var(--warn)' } }, t('tvNotOnline')));
+  const list = h('div', { class: 'list', style: { maxHeight: '180px', border: '1px solid var(--line)', borderRadius: '6px' } });
+  const fill = async () => {
+    list.innerHTML = '';
+    let items = [];
+    try { items = await listShared(); } catch (e) { console.warn(e); }
+    if (!items.length) { list.append(h('div', { class: 'empty small' }, t('tvEmpty'))); return; }
+    for (const it of items) {
+      list.append(h('div', { class: 'row' },
+        it.thumb ? h('img', { src: it.thumb, style: { width: '48px', height: '27px', objectFit: 'contain', background: '#000', borderRadius: '3px' } }) : h('span', null, '🎬'),
+        h('span', { class: 'nm' }, it.name), h('span', { class: 'ty' }, `${(it.dur || 0).toFixed(1)}s${it.alpha ? ' · ' + t('tvAlpha') : ''}`),
+        h('button', { class: 'icon', title: t('delete'), onclick: async () => { await deleteShared(it); fill(); } }, '✕')));
+    }
+  };
+  fill();
+  const body = h('div', null,
+    h('p', { class: 'dim small', style: { marginTop: 0 } }, t('tvIntro')),
+    h('div', { class: 'form' }, h('label', null, t('name')), name, h('label', null, t('size')), size, h('label', null, t('range')), range,
+      h('label', null, t('tvBackground')), h('label', { class: 'small' }, alpha, ' ', t('tvTransparent'))),
+    where, h('div', { class: 'small', style: { margin: '10px 0 4px', fontWeight: 600 } }, t('tvExisting')), list);
+  let out = null;
+  const r = await modal(t('tvTitle'), body, [{ label: t('cancel') }, { label: t('tvSend'), primary: true, value: 'go', run: () => {
+    const target = size.value === 'full' ? 1 : size.value === 'half' ? 0.5 : Math.min(2, +size.value / c.h);
+    out = { name: name.value.trim() || c.name, res: target, range: range.value, alpha: alpha.checked };
+  } }], { wide: true });
+  return r === 'go' ? out : null;
+}

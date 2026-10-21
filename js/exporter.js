@@ -79,7 +79,7 @@ export async function exportComp(project, comp, opts, onProgress, signal) {
   const W = Math.max(2, Math.round(comp.w * scale) & ~1), H = Math.max(2, Math.round(comp.h * scale) & ~1);
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const work = document.createElement('canvas');
-  const transparent = opts.format === 'png' || opts.format === 'pngseq';
+  const transparent = opts.format === 'png' || opts.format === 'pngseq' || (opts.format === 'webm' && opts.alpha);
   const frameAt = async i => {
     const tt = t0 + i / fps;
     await prepareExact(project, comp, tt);
@@ -136,7 +136,9 @@ export async function exportComp(project, comp, opts, onProgress, signal) {
   const vcodec = await getFirstEncodableVideoCodec(webm ? ['vp9', 'vp8', 'av1'] : ['avc', 'hevc', 'vp9', 'av1'], { width: W, height: H });
   if (!vcodec) throw new Error('no-encoder');
   const output = new Output({ format: webm ? new WebMOutputFormat() : new Mp4OutputFormat({ fastStart: 'in-memory' }), target: new BufferTarget() });
-  const vsrc = new CanvasSource(cv, { codec: vcodec, bitrate: Math.round(W * H * fps * (QUALITY_BPP[opts.quality] || 0.15)), keyFrameInterval: 2 });
+  // 透明背景（給小柯影音剪輯助手疊在影片上）：WebM 另外編一條透明度通道
+  const alpha = webm && opts.alpha && vcodec !== 'av1';
+  const vsrc = new CanvasSource(cv, { codec: vcodec, bitrate: Math.round(W * H * fps * (QUALITY_BPP[opts.quality] || 0.15)), keyFrameInterval: 2, ...(alpha ? { alpha: 'keep' } : {}) });
   output.addVideoTrack(vsrc, { frameRate: fps });
   onProgress?.(0, 'audio');
   const mixed = await mixAudio(project, comp, t0, t1).catch(e => { console.warn('audio', e); return null; });
@@ -159,5 +161,5 @@ export async function exportComp(project, comp, opts, onProgress, signal) {
   }
   vsrc.close();
   await output.finalize();
-  return { blob: new Blob([output.target.buffer], { type: webm ? 'video/webm' : 'video/mp4' }), ext: webm ? 'webm' : 'mp4', codec: vcodec };
+  return { blob: new Blob([output.target.buffer], { type: webm ? 'video/webm' : 'video/mp4' }), ext: webm ? 'webm' : 'mp4', codec: vcodec, W, H, dur: N / fps, fps, alpha: !!alpha };
 }

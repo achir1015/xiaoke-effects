@@ -5,7 +5,7 @@ import { h, timecode, download, clamp, isMobile } from './util.js';
 import { ic } from './icons.js';
 import { dropdown, closeMenus, menuOpen, modal, toast, confirmBox, sel, splitter } from './ui.js';
 import * as M from './model.js';
-import { exec, COMMANDS, importFiles, loadProject, addFootageLayer, automationAPI, openProjectFile } from './actions.js';
+import { exec, cmd, COMMANDS, importFiles, loadProject, addFootageLayer, automationAPI, openProjectFile } from './actions.js';
 import { mountTimeline, reveal, collapseAll, expandPath } from './timeline.js';
 import { tabbed, renderProject, renderEffectControls, renderProps, renderEffectsPanel, renderLibrary, renderPreview, renderQueue } from './panels.js';
 import * as Viewer from './viewer.js';
@@ -40,6 +40,7 @@ function menus() {
       '-',
       { label: t('exportLottie') + '…', disabled: !c, run: () => quickExport('lottie') },
       { label: t('exportVideo') + '…', key: K('Ctrl+M'), disabled: !c, run: () => exportFlow() },
+      { label: t('tvMenu') + '…', disabled: !c, run: () => exec('file.toVideo') },
       { label: t('addToRQ'), key: K('Ctrl+Shift+/'), disabled: !c, run: () => exec('comp.addToRQ') },
       '-',
       { label: t('openEngine'), run: openEngine },
@@ -212,7 +213,8 @@ function buildToolbar() {
   tb.append(h('div', { class: 'sep' }),
     h('label', null, h('input', { type: 'checkbox', checked: S.snapping, onchange: e => { S.snapping = e.target.checked; } }), t('snapping')),
     h('div', { class: 'sep' }),
-    h('button', { class: 'primary', style: { padding: '3px 12px' }, onclick: () => exportFlow() }, ic('export'), ' ', t('exportShort')));
+    h('button', { class: 'primary', style: { padding: '3px 12px' }, onclick: () => exportFlow() }, ic('export'), ' ', t('exportShort')),
+    h('button', { style: { padding: '3px 10px', marginLeft: '4px' }, title: t('tvMenu'), onclick: () => exec('file.toVideo') }, ic('video'), ' ', t('tvShort')));
   const ws = h('div', { class: 'ws' });
   for (const w of ['default', 'animation', 'effects', 'small']) ws.append(h('button', { class: (localStorage.getItem('xke.ws') || 'default') === w ? 'on' : '', onclick: () => setWorkspace(w) }, t('ws_' + w)));
   tb.append(ws);
@@ -549,6 +551,44 @@ async function runExport(c, opts, prog) {
     return false;
   }
 }
+// 匯出到小柯影音剪輯助手：算成（透明）WebM，放進共用動畫素材庫
+async function exportToVideo() {
+  const c = comp(); if (!c) { toast(t('needComp'), 'warn'); return; }
+  if (S.playing) stopPlay();
+  const { toVideoDialog } = await import('./dialogs.js');
+  const o = await toVideoDialog(c);
+  if (!o) return;
+  const ac = new AbortController();
+  const bar = h('div', { style: { height: '18px', background: '#141517', border: '1px solid var(--line2)', borderRadius: '3px', overflow: 'hidden', position: 'relative' } }, h('div', { style: { position: 'absolute', inset: '0 auto 0 0', width: '0%', background: '#2b6db0' } }));
+  const label = h('div', { class: 'small dim', style: { marginTop: '6px' } }, t('rendering'));
+  let closeFn = null;
+  modal(t('tvTitle'), h('div', null, bar, label), [{ label: t('cancel'), run: () => ac.abort() }], { sticky: true, onOpen: (box, close) => { closeFn = close; } });
+  try {
+    const [{ exportComp, renderStill }, Sh] = await Promise.all([import('./exporter.js'), import('./shared.js')]);
+    const res = await exportComp(S.project, c, { format: 'webm', res: o.res, quality: 'high', range: o.range, alpha: o.alpha }, p => {
+      bar.firstChild.style.width = Math.round(p * 100) + '%'; label.textContent = Math.round(p * 100) + '%';
+    }, ac.signal);
+    // 縮圖：動畫中間那一格（透明的部分保留，素材箱會顯示在深色背景上）
+    const t0 = o.range === 'full' ? 0 : c.workIn, t1 = o.range === 'full' ? c.duration : c.workOut;
+    const png = await renderStill(S.project, c, (t0 + t1) / 2, Math.min(1, 240 / c.w), o.alpha);
+    const thumb = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(png); });
+    label.textContent = t('tvSaving');
+    const saved = await Sh.saveShared({ name: o.name, w: res.W, h: res.H, dur: res.dur, fps: res.fps, alpha: res.alpha, thumb, comp: c.name }, res.blob);
+    closeFn?.('done');
+    if (saved.mode === 'file' && saved.where === null) { toast(t('cancelled')); return; }
+    const btns = [{ label: t('close') }];
+    if (saved.mode === 'idb') btns.push({ label: t('tvOpenVideo'), primary: true, run: () => { window.open(Sh.VIDEO_APP_URL + '?bt=fxanim', 'xiaoke-video'); } });
+    if (saved.mode === 'folder') btns.push({ label: t('tvOpenFolder'), primary: true, run: () => { Desktop.api.open_shared_dir(); } });
+    modal(t('tvDone'), h('div', null, h('p', null, t('tvDone_' + saved.mode, { name: o.name, size: (res.blob.size / 1e6).toFixed(1) + ' MB', where: saved.where || '' })),
+      res.alpha ? h('p', { class: 'small dim' }, t('tvAlphaNote')) : null), btns);
+  } catch (e) {
+    closeFn?.('err');
+    if (e.name === 'AbortError') { toast(t('cancelled')); return; }
+    console.error(e); toast(t(e.message === 'no-encoder' ? 'noEncoder' : 'exportFail'), 'warn', 5000);
+  }
+}
+cmd('file.toVideo', exportToVideo);
+
 bus.on('renderQueue', async (prog, btn) => {
   const items = S.project.renderQueue.filter(r => r.on && r.status !== 'done');
   if (!items.length) { toast(t('rqNothing')); return; }
