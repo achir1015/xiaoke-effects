@@ -131,7 +131,7 @@ export const M4 = {
 
 // 下載檔案：桌面版跳出「另存新檔」直接寫到電腦（回傳路徑；取消回傳 null），網頁版用瀏覽器下載（回傳 ''）
 export async function download(blob, name) {
-  if (window.pywebview?.api) {
+  if (window.pywebview?.api || window.XiaokeAndroid) {
     const { desktopSave } = await import('./desktop.js');
     return desktopSave(name, blob);
   }

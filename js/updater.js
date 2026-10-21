@@ -1,5 +1,5 @@
 // 版本更新：比對伺服器上的 version.json，有新版就提示「重新載入」（離線快取也一起更新）
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.2.0';
 
 export async function checkWebUpdate() {
   try {
@@ -27,7 +27,7 @@ export function cmp(a, b) {
 }
 
 export function registerSW() {
-  if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
+  if (!('serviceWorker' in navigator) || location.protocol === 'file:' || window.XiaokeAndroid) return;   // Android 版的網頁本來就在 APK 裡
   if (location.hostname === '127.0.0.1' && !location.search.includes('sw=1')) return; // 本機測試不需要
   navigator.serviceWorker.register('sw.js').catch(() => { });
 }

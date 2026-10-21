@@ -104,5 +104,6 @@ export default {
   downloadingUpdate: 'Güncelleme indiriliyor %{pct}…',
   installingUpdate: 'Yükleniyor — uygulama otomatik olarak yeniden başlayacak…',
   macUpdateHint: 'Yeni disk görüntüsü açıldı: eskisinin yerine geçmesi için uygulamayı Uygulamalar’a sürükleyin',
-  downloadDesktop: 'Masaüstü uygulamasını indir (Windows / Mac)',
+  downloadDesktop: 'Uygulamayı indir (Windows / Mac / Android)',
+  androidInstallPerm: 'Açılan ayarlar ekranında "Bilinmeyen uygulamaları yükle" iznini verin, ardından geri dönüp tekrar Şimdi güncelle’ye dokunun',
 };

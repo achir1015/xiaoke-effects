@@ -104,5 +104,6 @@ export default {
   downloadingUpdate: 'جارٍ تنزيل التحديث {pct}%…',
   installingUpdate: 'جارٍ التثبيت — سيُعاد تشغيل التطبيق تلقائيًا…',
   macUpdateHint: 'تم فتح صورة القرص الجديدة: اسحب التطبيق إلى مجلد التطبيقات لاستبدال الإصدار القديم',
-  downloadDesktop: 'تنزيل تطبيق سطح المكتب (Windows / Mac)',
+  downloadDesktop: 'تنزيل التطبيق (Windows / Mac / Android)',
+  androidInstallPerm: 'اسمح بـ"تثبيت التطبيقات غير المعروفة" في شاشة الإعدادات التي فُتحت، ثم ارجع واضغط "حدّث الآن" مرة أخرى',
 };

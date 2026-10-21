@@ -1,9 +1,25 @@
-// 桌面版（Windows／Mac 的 Python 程式）提供的功能：直接存檔到電腦、版本更新、用系統瀏覽器開網址
-// 網頁版沒有 window.pywebview，這些功能會自動改用瀏覽器的做法。
+// App 版提供的功能：直接存檔到電腦／手機、版本更新、用系統瀏覽器開網址
+//  桌面版（Windows／Mac 的 Python 程式）：window.pywebview.api
+//  Android 版（WebView）：window.XiaokeAndroid（同步、回傳 JSON 字串）→ 包成和桌面版一樣的非同步介面
+// 網頁版兩個都沒有，這些功能會自動改用瀏覽器的做法。
+
+const A = () => window.XiaokeAndroid;
+const J = s => { try { return JSON.parse(s); } catch { return { status: 'error', message: String(s) }; } };
+const androidApi = {
+  app_info: async () => J(A().appInfo()),
+  begin_save: async name => J(A().beginSave(name)),
+  write_chunk: async (token, b64) => J(A().writeChunk(token, b64)),
+  end_save: async token => J(A().endSave(token)),
+  check_update: async () => J(A().checkUpdate()),
+  install_update: async (url, ver) => J(A().installUpdate(url, ver)),
+  update_status: async () => J(A().updateStatus()),
+  open_url: async url => A().openUrl(url),
+};
 
 export const Desktop = {
-  get available() { return !!(window.pywebview && window.pywebview.api); },
-  get api() { return window.pywebview.api; },
+  get available() { return !!(A() || (window.pywebview && window.pywebview.api)); },
+  get android() { return !!A(); },
+  get api() { return A() ? androidApi : window.pywebview.api; },
 };
 
 export function whenDesktopReady(timeout = 2500) {

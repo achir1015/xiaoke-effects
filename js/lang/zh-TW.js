@@ -104,5 +104,6 @@ export default {
   downloadingUpdate: '正在下載新版 {pct}%…',
   installingUpdate: '正在安裝，完成後會自動重新開啟…',
   macUpdateHint: '已打開新版安裝映像：把 App 拖進「應用程式」取代舊版',
-  downloadDesktop: '下載桌面版（Windows／Mac）',
+  downloadDesktop: '下載 App（Windows／Mac／Android）',
+  androidInstallPerm: '請在剛打開的設定畫面允許「安裝不明的應用程式」，返回後再按一次「立即更新」',
 };

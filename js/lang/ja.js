@@ -104,5 +104,6 @@ export default {
   downloadingUpdate: '新しいバージョンをダウンロード中 {pct}%…',
   installingUpdate: 'インストール中です。完了すると自動で再起動します…',
   macUpdateHint: '新しいディスクイメージを開きました：アプリを「アプリケーション」にドラッグして置き換えてください',
-  downloadDesktop: 'デスクトップ版をダウンロード（Windows／Mac）',
+  downloadDesktop: 'アプリをダウンロード（Windows／Mac／Android）',
+  androidInstallPerm: '開いた設定画面で「不明なアプリのインストール」を許可し、戻ってからもう一度「今すぐ更新」を押してください',
 };

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">小柯特效</string>
+    <style name="AppTheme" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">#121315</item>
+        <item name="android:colorPrimaryDark">#121315</item>
+        <item name="android:colorAccent">#2D8CEB</item>
+        <item name="android:statusBarColor">#121315</item>
+        <item name="android:navigationBarColor">#121315</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>

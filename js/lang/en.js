@@ -104,5 +104,6 @@ export default {
   downloadingUpdate: 'Downloading update {pct}%…',
   installingUpdate: 'Installing — the app will restart automatically…',
   macUpdateHint: 'The new disk image is open: drag the app into Applications to replace the old one',
-  downloadDesktop: 'Download desktop app (Windows / Mac)',
+  downloadDesktop: 'Download the app (Windows / Mac / Android)',
+  androidInstallPerm: 'Allow "Install unknown apps" on the settings screen that just opened, then come back and tap Update now again',
 };

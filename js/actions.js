@@ -1,5 +1,5 @@
 // 命令登錄表：選單、快捷鍵、右鍵選單、自動化（window.xiaokeFX.execute）都走同一套命令
-import { S, bus, comp, edit, changed, history, selLayers, firstSel, select, setTime, openComp, getPath } from './state.js';
+import { S, bus, comp, edit, changed, history, selLayers, firstSel, select, setTime, openComp, getPath, autosave } from './state.js';
 import * as M from './model.js';
 import { animated, setKey, removeKey, applyEase, toggleStopwatch, rawAt, keyIndexAt, P, walkProps } from './anim.js';
 import { uid, clone, timecode, download, h } from './util.js';
@@ -93,7 +93,7 @@ cmd('file.save', async () => {
   }
   const name = (p.name || comp()?.name || 'project').replace(/[\\/:*?"<>|]/g, '_') + M.FILE_EXT;
   const blob = new Blob([JSON.stringify(p)], { type: 'application/json' });
-  if (window.showSaveFilePicker && !window.pywebview?.api) {
+  if (window.showSaveFilePicker && !window.pywebview?.api && !window.XiaokeAndroid) {
     try {
       const hnd = await showSaveFilePicker({ suggestedName: name, types: [{ description: t('projectFile'), accept: { 'application/json': [M.FILE_EXT] } }] });
       const w = await hnd.createWritable(); await w.write(blob); await w.close();
@@ -129,6 +129,7 @@ export async function loadProject(p, compId) {
   if (id) openComp(id); else { bus.emit('comp'); changed('load'); }
   if (missing.length) toast(t('missingFootage', { names: missing.map(f => f.name).join(', ') }), 'warn', 6000);
   S.dirty = false;
+  autosave();   // 開啟的專案馬上存一份，下次打開 App 才會是這個專案
 }
 
 // ---- 編輯 ----

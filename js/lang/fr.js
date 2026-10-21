@@ -104,5 +104,6 @@ export default {
   downloadingUpdate: 'Téléchargement de la mise à jour {pct} %…',
   installingUpdate: 'Installation : l’application redémarrera automatiquement…',
   macUpdateHint: 'La nouvelle image disque est ouverte : glissez l’app dans Applications pour remplacer l’ancienne',
-  downloadDesktop: 'Télécharger l’app de bureau (Windows / Mac)',
+  downloadDesktop: 'Télécharger l’app (Windows / Mac / Android)',
+  androidInstallPerm: 'Autorisez « Installer des applis inconnues » dans l’écran de réglages qui vient de s’ouvrir, puis revenez et touchez Mettre à jour',
 };

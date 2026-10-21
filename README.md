@@ -4,7 +4,7 @@
 
 **線上版：** https://achir1015.github.io/xiaoke-effects/（可「加入主畫面」當 App 使用，離線也能開）
 
-**桌面版：** [Releases](https://github.com/achir1015/xiaoke-effects/releases/latest) 下載 Windows 10／11 安裝檔（.exe）或 Mac（Apple 晶片／Intel）.dmg。輸出直接存到電腦、雙擊 .xke 開專案（Windows）、App 內自動更新。
+**桌面版與 Android 版：** [Releases](https://github.com/achir1015/xiaoke-effects/releases/latest) 下載 Windows 10／11 安裝檔（.exe）、Mac（Apple 晶片／Intel）.dmg，或 Android 的 .apk。輸出直接存到電腦、雙擊 .xke 開專案（Windows）、App 內自動更新。
 
 ## 功能
 
@@ -40,6 +40,13 @@ python -m http.server 8799
 - Windows 打包：`powershell -ExecutionPolicy Bypass -File desktop/build_windows.ps1` → `dist-installer/XiaokeEffects-Setup-版本.exe`
 - 自我測試：`XiaokeEffects.exe --selftest 報告.json`（使用獨立資料夾與埠號 48141，不影響使用者資料）
 - Mac 的 Qt WebEngine 沒有 H.264 編碼器：存 MP4 時用 ffmpeg 轉成 H.264＋AAC
+
+## Android 版
+
+`android/`：Java、不用 Gradle，`python -I android/build.py [install|debug]` 產生 `android/build/XiaokeEffects.apk`（網頁在建置時複製進 assets/web，由 `https://appassets.androidplatform.net/` 載入）。
+- 存檔：網頁呼叫 `window.XiaokeAndroid`（MediaStore：影片／圖片／音樂／下載 裡的「小柯特效」）
+- 簽章金鑰 `android/xiaokeeffects.jks` 只在本機（不進 git）；之後的版本必須用同一把金鑰，才能覆蓋安裝
+- 發佈時把 APK 加到同一個 Release（檔名 `XiaokeEffects-Android-版本.apk`），App 的檢查更新讀 releases/latest 裡的 .apk
 
 ## 發佈
 

@@ -104,5 +104,6 @@ export default {
   downloadingUpdate: 'Descargando actualización {pct}%…',
   installingUpdate: 'Instalando: la aplicación se reiniciará automáticamente…',
   macUpdateHint: 'Se abrió la nueva imagen de disco: arrastra la app a Aplicaciones para reemplazar la anterior',
-  downloadDesktop: 'Descargar la app de escritorio (Windows / Mac)',
+  downloadDesktop: 'Descargar la app (Windows / Mac / Android)',
+  androidInstallPerm: 'Permite «Instalar apps desconocidas» en la pantalla de ajustes que se abrió y luego vuelve y pulsa Actualizar ahora',
 };

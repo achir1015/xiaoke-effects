@@ -619,6 +619,7 @@ async function checkDesktopUpdate(manual) {
       if (st.state === 'downloading') msg.textContent = t('downloadingUpdate', { pct: st.pct });
       else if (st.state === 'launching') msg.textContent = t('installingUpdate');
       else if (st.state === 'manual') { clearInterval(poll); msg.textContent = t('macUpdateHint'); }
+      else if (st.state === 'permission') { clearInterval(poll); msg.textContent = t('androidInstallPerm'); btn.disabled = false; }
       else if (st.state === 'error') { clearInterval(poll); msg.textContent = t('updateFail'); btn.disabled = false; }
     }, 500);
   });

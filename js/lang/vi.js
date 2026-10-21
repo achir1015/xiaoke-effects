@@ -104,5 +104,6 @@ export default {
   downloadingUpdate: 'Đang tải bản cập nhật {pct}%…',
   installingUpdate: 'Đang cài đặt — ứng dụng sẽ tự khởi động lại…',
   macUpdateHint: 'Đã mở ảnh đĩa mới: kéo ứng dụng vào Applications để thay thế bản cũ',
-  downloadDesktop: 'Tải ứng dụng máy tính (Windows / Mac)',
+  downloadDesktop: 'Tải ứng dụng (Windows / Mac / Android)',
+  androidInstallPerm: 'Hãy cho phép "Cài đặt ứng dụng không xác định" trong màn hình cài đặt vừa mở, rồi quay lại và chạm Cập nhật ngay lần nữa',
 };
