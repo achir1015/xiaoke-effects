@@ -15,6 +15,7 @@ import { scheduleAudio } from './audio.js';
 import { checkWebUpdate, applyWebUpdate, registerSW, APP_VERSION } from './updater.js';
 import { applyEase } from './anim.js';
 import { fxAvailable } from './fx.js';
+import { Desktop, openExternal, whenDesktopReady } from './desktop.js';
 
 const $ = id => document.getElementById(id);
 let left, right, bottom, needDraw = true;
@@ -110,6 +111,7 @@ function menus() {
     ['menuHelp', [
       { label: t('shortcuts'), key: '?', run: () => import('./dialogs.js').then(m => m.shortcutsDialog()) },
       { label: t('checkUpdate'), run: () => checkUpdate(true) },
+      Desktop.available ? null : { label: t('downloadDesktop'), run: () => openExternal('https://github.com/achir1015/xiaoke-effects/releases/latest') },
       { label: t('openEngine'), run: openEngine },
       { label: t('about'), run: () => import('./dialogs.js').then(m => m.aboutDialog()) },
     ]],
@@ -533,9 +535,10 @@ async function runExport(c, opts, prog) {
       else { bar.firstChild.style.width = pct + '%'; label.textContent = stage === 'audio' ? t('mixingAudio') : `${pct}% · ${((performance.now() - t0) / 1000).toFixed(1)} s`; }
     }, ac.signal);
     const name = `${c.name.replace(/[\\/:*?"<>|]/g, '_')}.${res.ext}`;
-    download(res.blob, name);
     closeFn?.('done');
-    toast(t('exported', { name, size: (res.blob.size / 1e6).toFixed(1) + ' MB' }), '', 4000);
+    const path = await download(res.blob, name);
+    if (path === null) { toast(t('cancelled')); return false; }
+    toast(path ? t('savedTo', { path }) : t('exported', { name, size: (res.blob.size / 1e6).toFixed(1) + ' MB' }), '', 5000);
     if (res.warnings?.length) modal(t('lottieWarnings'), h('ul', null, res.warnings.map(w => h('li', null, w))), [{ label: t('ok'), primary: true }]);
     return true;
   } catch (e) {
@@ -582,15 +585,43 @@ bus.on('useTemplate', id => useTemplate(id, false));
 // ================= 原版 EffectCraft 引擎 =================
 async function openEngine() {
   const ok = await modal(t('engineTitle'), h('div', null, h('p', null, t('engineText')), h('p', { class: 'small dim' }, t('engineNote'))), [{ label: t('cancel'), value: false }, { label: t('openEngineBtn'), primary: true, value: true }]);
-  if (ok === true) window.open('engine/', '_blank', 'noopener');
+  if (ok !== true) return;
+  if (Desktop.available) openExternal('https://achir1015.github.io/xiaoke-effects/engine/');
+  else window.open('engine/', '_blank', 'noopener');
 }
 
 // ================= 更新 =================
 async function checkUpdate(manual) {
+  if (await whenDesktopReady(manual ? 500 : 3000)) return checkDesktopUpdate(manual);
   const r = await checkWebUpdate();
   if (!r) { if (manual) toast(t('updateFail'), 'warn'); return; }
   if (!r.newer) { if (manual) toast(t('upToDate', { v: APP_VERSION })); return; }
   const bar = h('div', { class: 'updbar' }, h('span', null, t('updateAvail', { v: r.latest })), h('button', { class: 'primary', onclick: () => applyWebUpdate() }, t('reload')), h('button', { class: 'icon', onclick: () => bar.remove() }, '✕'));
+  document.body.append(bar);
+}
+// 桌面版：查 GitHub Releases，一鍵下載安裝（Windows 裝好自動重開；Mac 打開 .dmg）
+async function checkDesktopUpdate(manual) {
+  let r;
+  try { r = await Desktop.api.check_update(); } catch (e) { r = { status: 'error', message: String(e) }; }
+  if (r.status !== 'ok') { if (manual) toast(t('updateFail'), 'warn'); return; }
+  const { cmp } = await import('./updater.js');
+  if (!r.latest || cmp(r.latest, r.current) <= 0) { if (manual) toast(t('upToDate', { v: r.current })); return; }
+  document.querySelector('.updbar')?.remove();
+  const msg = h('span', null, t('updateAvail', { v: r.latest }));
+  const btn = h('button', { class: 'primary' }, t('installUpdate'));
+  const bar = h('div', { class: 'updbar' }, msg, btn, h('button', { class: 'icon', onclick: () => bar.remove() }, '✕'));
+  btn.addEventListener('click', async () => {
+    if (!r.url) { openExternal(r.page || 'https://github.com/achir1015/xiaoke-effects/releases'); return; }
+    btn.disabled = true;
+    await Desktop.api.install_update(r.url, r.latest);
+    const poll = setInterval(async () => {
+      const st = await Desktop.api.update_status();
+      if (st.state === 'downloading') msg.textContent = t('downloadingUpdate', { pct: st.pct });
+      else if (st.state === 'launching') msg.textContent = t('installingUpdate');
+      else if (st.state === 'manual') { clearInterval(poll); msg.textContent = t('macUpdateHint'); }
+      else if (st.state === 'error') { clearInterval(poll); msg.textContent = t('updateFail'); btn.disabled = false; }
+    }, 500);
+  });
   document.body.append(bar);
 }
 

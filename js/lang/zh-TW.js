@@ -99,4 +99,10 @@ export default {
   // 表達式控制項（效果）
   'fxcat.control': '表達式控制項', 'fx.sliderControl': '滑桿控制', 'fx.angleControl': '角度控制', 'fx.pointControl': '點控制', 'fx.colorControl': '顏色控制', 'fx.checkboxControl': '核取方塊控制', 'fx.layerControl': '圖層控制',
   'fxp.sliderControl.slider': '滑桿', 'fxp.angleControl.angle': '角度', 'fxp.pointControl.point': '點', 'fxp.colorControl.color': '顏色', 'fxp.checkboxControl.checkbox': '核取方塊', 'fxp.layerControl.layer': '圖層',
+  savedTo: '已存到 {path}',
+  installUpdate: '立即更新',
+  downloadingUpdate: '正在下載新版 {pct}%…',
+  installingUpdate: '正在安裝，完成後會自動重新開啟…',
+  macUpdateHint: '已打開新版安裝映像：把 App 拖進「應用程式」取代舊版',
+  downloadDesktop: '下載桌面版（Windows／Mac）',
 };

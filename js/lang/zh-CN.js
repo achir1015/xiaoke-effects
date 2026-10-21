@@ -99,4 +99,10 @@ export default {
   // 表达式控制（效果）
   'fxcat.control': '表达式控制', 'fx.sliderControl': '滑块控制', 'fx.angleControl': '角度控制', 'fx.pointControl': '点控制', 'fx.colorControl': '颜色控制', 'fx.checkboxControl': '复选框控制', 'fx.layerControl': '图层控制',
   'fxp.sliderControl.slider': '滑块', 'fxp.angleControl.angle': '角度', 'fxp.pointControl.point': '点', 'fxp.colorControl.color': '颜色', 'fxp.checkboxControl.checkbox': '复选框', 'fxp.layerControl.layer': '图层',
+  savedTo: '已保存到 {path}',
+  installUpdate: '立即更新',
+  downloadingUpdate: '正在下载新版 {pct}%…',
+  installingUpdate: '正在安装，完成后会自动重新打开…',
+  macUpdateHint: '已打开新版安装映像：把 App 拖到“应用程序”替换旧版',
+  downloadDesktop: '下载桌面版（Windows／Mac）',
 };

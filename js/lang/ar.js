@@ -99,4 +99,10 @@ export default {
   // عناصر التحكم في التعبيرات (تأثيرات)
   'fxcat.control': 'عناصر التحكم في التعبيرات', 'fx.sliderControl': 'التحكم بالمنزلق', 'fx.angleControl': 'التحكم بالزاوية', 'fx.pointControl': 'التحكم بالنقطة', 'fx.colorControl': 'التحكم باللون', 'fx.checkboxControl': 'التحكم بخانة الاختيار', 'fx.layerControl': 'التحكم بالطبقة',
   'fxp.sliderControl.slider': 'المنزلق', 'fxp.angleControl.angle': 'الزاوية', 'fxp.pointControl.point': 'النقطة', 'fxp.colorControl.color': 'اللون', 'fxp.checkboxControl.checkbox': 'خانة الاختيار', 'fxp.layerControl.layer': 'الطبقة',
+  savedTo: 'تم الحفظ في {path}',
+  installUpdate: 'حدّث الآن',
+  downloadingUpdate: 'جارٍ تنزيل التحديث {pct}%…',
+  installingUpdate: 'جارٍ التثبيت — سيُعاد تشغيل التطبيق تلقائيًا…',
+  macUpdateHint: 'تم فتح صورة القرص الجديدة: اسحب التطبيق إلى مجلد التطبيقات لاستبدال الإصدار القديم',
+  downloadDesktop: 'تنزيل تطبيق سطح المكتب (Windows / Mac)',
 };

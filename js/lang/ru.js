@@ -99,4 +99,10 @@ export default {
   // Элементы управления выражениями (эффекты)
   'fxcat.control': 'Элементы управления выражениями', 'fx.sliderControl': 'Управление ползунком', 'fx.angleControl': 'Управление углом', 'fx.pointControl': 'Управление точкой', 'fx.colorControl': 'Управление цветом', 'fx.checkboxControl': 'Управление флажком', 'fx.layerControl': 'Управление слоем',
   'fxp.sliderControl.slider': 'Ползунок', 'fxp.angleControl.angle': 'Угол', 'fxp.pointControl.point': 'Точка', 'fxp.colorControl.color': 'Цвет', 'fxp.checkboxControl.checkbox': 'Флажок', 'fxp.layerControl.layer': 'Слой',
+  savedTo: 'Сохранено: {path}',
+  installUpdate: 'Обновить сейчас',
+  downloadingUpdate: 'Загрузка обновления {pct}%…',
+  installingUpdate: 'Установка — приложение перезапустится автоматически…',
+  macUpdateHint: 'Открыт новый образ диска: перетащите приложение в «Программы», чтобы заменить старое',
+  downloadDesktop: 'Скачать настольную версию (Windows / Mac)',
 };

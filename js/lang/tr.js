@@ -99,4 +99,10 @@ export default {
   // İfade Denetimleri (efektler)
   'fxcat.control': 'İfade Denetimleri', 'fx.sliderControl': 'Kaydırıcı Denetimi', 'fx.angleControl': 'Açı Denetimi', 'fx.pointControl': 'Nokta Denetimi', 'fx.colorControl': 'Renk Denetimi', 'fx.checkboxControl': 'Onay Kutusu Denetimi', 'fx.layerControl': 'Katman Denetimi',
   'fxp.sliderControl.slider': 'Kaydırıcı', 'fxp.angleControl.angle': 'Açı', 'fxp.pointControl.point': 'Nokta', 'fxp.colorControl.color': 'Renk', 'fxp.checkboxControl.checkbox': 'Onay Kutusu', 'fxp.layerControl.layer': 'Katman',
+  savedTo: '{path} konumuna kaydedildi',
+  installUpdate: 'Şimdi güncelle',
+  downloadingUpdate: 'Güncelleme indiriliyor %{pct}…',
+  installingUpdate: 'Yükleniyor — uygulama otomatik olarak yeniden başlayacak…',
+  macUpdateHint: 'Yeni disk görüntüsü açıldı: eskisinin yerine geçmesi için uygulamayı Uygulamalar’a sürükleyin',
+  downloadDesktop: 'Masaüstü uygulamasını indir (Windows / Mac)',
 };

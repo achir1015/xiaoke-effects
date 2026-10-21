@@ -93,17 +93,18 @@ cmd('file.save', async () => {
   }
   const name = (p.name || comp()?.name || 'project').replace(/[\\/:*?"<>|]/g, '_') + M.FILE_EXT;
   const blob = new Blob([JSON.stringify(p)], { type: 'application/json' });
-  if (window.showSaveFilePicker) {
+  if (window.showSaveFilePicker && !window.pywebview?.api) {
     try {
       const hnd = await showSaveFilePicker({ suggestedName: name, types: [{ description: t('projectFile'), accept: { 'application/json': [M.FILE_EXT] } }] });
       const w = await hnd.createWritable(); await w.write(blob); await w.close();
       S.dirty = false; toast(t('saved')); return;
     } catch (e) { if (e.name === 'AbortError') return; }
   }
-  download(blob, name);
+  const path = await download(blob, name);
+  if (path === null) return;
   S.dirty = false;
   if (big.length) toast(t('bigNotSaved', { names: big.join(', ') }), 'warn', 6000);
-  else toast(t('saved'));
+  else toast(path ? t('savedTo', { path }) : t('saved'), '', 4000);
 });
 cmd('file.open', async () => {
   const [f] = await pickFiles(M.FILE_EXT + ',.json', false);
@@ -271,7 +272,8 @@ cmd('comp.snapshot', async () => {
   const c = needComp(); if (!c) return;
   const { renderStill } = await import('./exporter.js');
   const blob = await renderStill(S.project, c, S.time, 1);
-  download(blob, `${c.name}_${timecode(S.time, c.fps).replace(/:/g, '-')}.png`);
+  const path = await download(blob, `${c.name}_${timecode(S.time, c.fps).replace(/:/g, '-')}.png`);
+  if (path) toast(t('savedTo', { path }), '', 4000);
 });
 cmd('comp.duplicate', () => {
   const c = needComp(); if (!c) return;
@@ -460,5 +462,11 @@ export function automationAPI() {
     state: () => ({ compId: S.compId, time: S.time, selection: [...S.sel] }),
     project: () => JSON.parse(JSON.stringify(S.project)),
     setTime: tt => setTime(tt),
+    // 桌面版雙擊專案檔：從本機伺服器讀取後開啟（.xke）或匯入（其他檔案）
+    async openUrl(url, name) {
+      const b = await (await fetch(url)).blob();
+      const f = new File([b], name || 'project' + M.FILE_EXT);
+      if (f.name.toLowerCase().endsWith(M.FILE_EXT)) await openProjectFile(f); else await importFiles([f], true);
+    },
   };
 }

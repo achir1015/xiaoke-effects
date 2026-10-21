@@ -99,4 +99,10 @@ export default {
   // 표현식 컨트롤 (효과)
   'fxcat.control': '표현식 컨트롤', 'fx.sliderControl': '슬라이더 컨트롤', 'fx.angleControl': '각도 컨트롤', 'fx.pointControl': '포인트 컨트롤', 'fx.colorControl': '색상 컨트롤', 'fx.checkboxControl': '확인란 컨트롤', 'fx.layerControl': '레이어 컨트롤',
   'fxp.sliderControl.slider': '슬라이더', 'fxp.angleControl.angle': '각도', 'fxp.pointControl.point': '포인트', 'fxp.colorControl.color': '색상', 'fxp.checkboxControl.checkbox': '확인란', 'fxp.layerControl.layer': '레이어',
+  savedTo: '{path}에 저장했습니다',
+  installUpdate: '지금 업데이트',
+  downloadingUpdate: '업데이트 다운로드 중 {pct}%…',
+  installingUpdate: '설치 중입니다. 완료되면 자동으로 다시 시작됩니다…',
+  macUpdateHint: '새 디스크 이미지를 열었습니다. 앱을 "응용 프로그램"으로 끌어 기존 버전을 교체하세요',
+  downloadDesktop: '데스크톱 앱 다운로드 (Windows / Mac)',
 };

@@ -2,3 +2,10 @@ engine/
 __pycache__/
 *.pyc
 .DS_Store
+dist/
+dist-installer/
+build/
+desktop/web/
+desktop/*.spec
+desktop/app.icns
+desktop/app.iconset/

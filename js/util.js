@@ -129,11 +129,16 @@ export const M4 = {
   },
 };
 
-// 下載檔案
-export function download(blob, name) {
+// 下載檔案：桌面版跳出「另存新檔」直接寫到電腦（回傳路徑；取消回傳 null），網頁版用瀏覽器下載（回傳 ''）
+export async function download(blob, name) {
+  if (window.pywebview?.api) {
+    const { desktopSave } = await import('./desktop.js');
+    return desktopSave(name, blob);
+  }
   const a = h('a', { href: URL.createObjectURL(blob), download: name });
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+  return '';
 }
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
 export function debounce(fn, ms) { let tm; return (...a) => { clearTimeout(tm); tm = setTimeout(() => fn(...a), ms); }; }

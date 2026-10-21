@@ -99,4 +99,10 @@ export default {
   // Options pour expressions (effets)
   'fxcat.control': 'Options pour expressions', 'fx.sliderControl': 'Paramètre glissière', 'fx.angleControl': 'Paramètre d’angle', 'fx.pointControl': 'Paramètre point', 'fx.colorControl': 'Paramètre de couleur', 'fx.checkboxControl': 'Paramètre case', 'fx.layerControl': 'Paramètre de calque',
   'fxp.sliderControl.slider': 'Curseur', 'fxp.angleControl.angle': 'Angle', 'fxp.pointControl.point': 'Point', 'fxp.colorControl.color': 'Couleur', 'fxp.checkboxControl.checkbox': 'Case', 'fxp.layerControl.layer': 'Calque',
+  savedTo: 'Enregistré dans {path}',
+  installUpdate: 'Mettre à jour',
+  downloadingUpdate: 'Téléchargement de la mise à jour {pct} %…',
+  installingUpdate: 'Installation : l’application redémarrera automatiquement…',
+  macUpdateHint: 'La nouvelle image disque est ouverte : glissez l’app dans Applications pour remplacer l’ancienne',
+  downloadDesktop: 'Télécharger l’app de bureau (Windows / Mac)',
 };

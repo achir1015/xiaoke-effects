@@ -99,4 +99,10 @@ export default {
   // Expression Controls (effects)
   'fxcat.control': 'Expression Controls', 'fx.sliderControl': 'Slider Control', 'fx.angleControl': 'Angle Control', 'fx.pointControl': 'Point Control', 'fx.colorControl': 'Color Control', 'fx.checkboxControl': 'Checkbox Control', 'fx.layerControl': 'Layer Control',
   'fxp.sliderControl.slider': 'Slider', 'fxp.angleControl.angle': 'Angle', 'fxp.pointControl.point': 'Point', 'fxp.colorControl.color': 'Color', 'fxp.checkboxControl.checkbox': 'Checkbox', 'fxp.layerControl.layer': 'Layer',
+  savedTo: 'Saved to {path}',
+  installUpdate: 'Update now',
+  downloadingUpdate: 'Downloading update {pct}%…',
+  installingUpdate: 'Installing — the app will restart automatically…',
+  macUpdateHint: 'The new disk image is open: drag the app into Applications to replace the old one',
+  downloadDesktop: 'Download desktop app (Windows / Mac)',
 };

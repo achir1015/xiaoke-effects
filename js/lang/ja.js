@@ -99,4 +99,10 @@ export default {
   // エクスプレッション制御（エフェクト）
   'fxcat.control': 'エクスプレッション制御', 'fx.sliderControl': 'スライダー制御', 'fx.angleControl': '角度制御', 'fx.pointControl': 'ポイント制御', 'fx.colorControl': 'カラー制御', 'fx.checkboxControl': 'チェックボックス制御', 'fx.layerControl': 'レイヤー制御',
   'fxp.sliderControl.slider': 'スライダー', 'fxp.angleControl.angle': '角度', 'fxp.pointControl.point': 'ポイント', 'fxp.colorControl.color': 'カラー', 'fxp.checkboxControl.checkbox': 'チェックボックス', 'fxp.layerControl.layer': 'レイヤー',
+  savedTo: '{path} に保存しました',
+  installUpdate: '今すぐ更新',
+  downloadingUpdate: '新しいバージョンをダウンロード中 {pct}%…',
+  installingUpdate: 'インストール中です。完了すると自動で再起動します…',
+  macUpdateHint: '新しいディスクイメージを開きました：アプリを「アプリケーション」にドラッグして置き換えてください',
+  downloadDesktop: 'デスクトップ版をダウンロード（Windows／Mac）',
 };

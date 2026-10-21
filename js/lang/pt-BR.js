@@ -99,4 +99,10 @@ export default {
   // Controles de expressão (efeitos)
   'fxcat.control': 'Controles de expressão', 'fx.sliderControl': 'Controle deslizante', 'fx.angleControl': 'Controle de ângulo', 'fx.pointControl': 'Controle de ponto', 'fx.colorControl': 'Controle de cor', 'fx.checkboxControl': 'Controle de caixa de seleção', 'fx.layerControl': 'Controle de camada',
   'fxp.sliderControl.slider': 'Controle deslizante', 'fxp.angleControl.angle': 'Ângulo', 'fxp.pointControl.point': 'Ponto', 'fxp.colorControl.color': 'Cor', 'fxp.checkboxControl.checkbox': 'Caixa de seleção', 'fxp.layerControl.layer': 'Camada',
+  savedTo: 'Salvo em {path}',
+  installUpdate: 'Atualizar agora',
+  downloadingUpdate: 'Baixando atualização {pct}%…',
+  installingUpdate: 'Instalando — o app será reiniciado automaticamente…',
+  macUpdateHint: 'A nova imagem de disco foi aberta: arraste o app para Aplicativos para substituir o antigo',
+  downloadDesktop: 'Baixar o app para desktop (Windows / Mac)',
 };

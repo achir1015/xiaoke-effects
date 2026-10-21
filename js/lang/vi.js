@@ -99,4 +99,10 @@ export default {
   // Điều khiển biểu thức (hiệu ứng)
   'fxcat.control': 'Điều khiển biểu thức', 'fx.sliderControl': 'Điều khiển thanh trượt', 'fx.angleControl': 'Điều khiển góc', 'fx.pointControl': 'Điều khiển điểm', 'fx.colorControl': 'Điều khiển màu', 'fx.checkboxControl': 'Điều khiển ô đánh dấu', 'fx.layerControl': 'Điều khiển lớp',
   'fxp.sliderControl.slider': 'Thanh trượt', 'fxp.angleControl.angle': 'Góc', 'fxp.pointControl.point': 'Điểm', 'fxp.colorControl.color': 'Màu', 'fxp.checkboxControl.checkbox': 'Ô đánh dấu', 'fxp.layerControl.layer': 'Lớp',
+  savedTo: 'Đã lưu vào {path}',
+  installUpdate: 'Cập nhật ngay',
+  downloadingUpdate: 'Đang tải bản cập nhật {pct}%…',
+  installingUpdate: 'Đang cài đặt — ứng dụng sẽ tự khởi động lại…',
+  macUpdateHint: 'Đã mở ảnh đĩa mới: kéo ứng dụng vào Applications để thay thế bản cũ',
+  downloadDesktop: 'Tải ứng dụng máy tính (Windows / Mac)',
 };
