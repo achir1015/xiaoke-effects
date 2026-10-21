@@ -48,6 +48,12 @@ python -m http.server 8799
 - 簽章金鑰 `android/xiaokeeffects.jks` 只在本機（不進 git）；之後的版本必須用同一把金鑰，才能覆蓋安裝
 - 發佈時把 APK 加到同一個 Release（檔名 `XiaokeEffects-Android-版本.apk`），App 的檢查更新讀 releases/latest 裡的 .apk
 
+## iPhone／iPad 版
+
+- 最簡單：Safari 開線上版 → 分享 →「加入主畫面」（離線可用，存檔經由分享選單）。
+- App 版程式在 `ios/`（SwiftUI＋WKWebView，App 內的小型伺服器在 127.0.0.1:48151 提供和線上版同一份網頁；存檔打開分享選單：儲存到檔案／照片）。在 Mac 上 `bash ios/sync.sh` 複製網頁並用 XcodeGen 產生專案，再用 Xcode 執行到 iPhone。
+- 免費開發者帳號：一支 iPhone 最多 3 個自己安裝的 App，而且每 7 天要重新安裝一次。
+
 ## 發佈
 
 改 `version.json`（版本號＋更新說明）與 `js/updater.js` 的 `APP_VERSION`，推到 main：

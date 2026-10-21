@@ -27,7 +27,7 @@ export function cmp(a, b) {
 }
 
 export function registerSW() {
-  if (!('serviceWorker' in navigator) || location.protocol === 'file:' || window.XiaokeAndroid) return;   // Android 版的網頁本來就在 APK 裡
+  if (!('serviceWorker' in navigator) || location.protocol === 'file:' || window.XiaokeAndroid || window.XiaokeIOS) return;   // Android 版的網頁本來就在 APK 裡
   if (location.hostname === '127.0.0.1' && !location.search.includes('sw=1')) return; // 本機測試不需要
   navigator.serviceWorker.register('sw.js').catch(() => { });
 }

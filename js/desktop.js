@@ -1,4 +1,4 @@
-// App 版提供的功能：直接存檔到電腦／手機、版本更新、用系統瀏覽器開網址
+// App 版提供的功能：直接存檔到電腦／手機、版本更新、用系統瀏覽器開網址（iPhone 版存檔時打開分享選單）
 //  桌面版（Windows／Mac 的 Python 程式）：window.pywebview.api
 //  Android 版（WebView）：window.XiaokeAndroid（同步、回傳 JSON 字串）→ 包成和桌面版一樣的非同步介面
 // 網頁版兩個都沒有，這些功能會自動改用瀏覽器的做法。
@@ -16,10 +16,16 @@ const androidApi = {
   open_url: async url => A().openUrl(url),
 };
 
+//  iPhone／iPad 版（WKWebView）：window.webkit.messageHandlers.xke.postMessage({ cmd, args }) 回傳 Promise
+const I = () => window.XiaokeIOS && window.webkit?.messageHandlers?.xke;
+const iosCall = (cmd, ...args) => I().postMessage({ cmd, args });
+const iosApi = new Proxy({}, { get: (_, cmd) => (...args) => iosCall(cmd, ...args) });
+
 export const Desktop = {
-  get available() { return !!(A() || (window.pywebview && window.pywebview.api)); },
+  get available() { return !!(A() || I() || (window.pywebview && window.pywebview.api)); },
   get android() { return !!A(); },
-  get api() { return A() ? androidApi : window.pywebview.api; },
+  get ios() { return !!I(); },
+  get api() { return A() ? androidApi : I() ? iosApi : window.pywebview.api; },
 };
 
 export function whenDesktopReady(timeout = 2500) {

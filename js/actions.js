@@ -93,7 +93,7 @@ cmd('file.save', async () => {
   }
   const name = (p.name || comp()?.name || 'project').replace(/[\\/:*?"<>|]/g, '_') + M.FILE_EXT;
   const blob = new Blob([JSON.stringify(p)], { type: 'application/json' });
-  if (window.showSaveFilePicker && !window.pywebview?.api && !window.XiaokeAndroid) {
+  if (window.showSaveFilePicker && !window.pywebview?.api && !window.XiaokeAndroid && !window.XiaokeIOS) {
     try {
       const hnd = await showSaveFilePicker({ suggestedName: name, types: [{ description: t('projectFile'), accept: { 'application/json': [M.FILE_EXT] } }] });
       const w = await hnd.createWritable(); await w.write(blob); await w.close();
