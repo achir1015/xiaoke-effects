@@ -164,4 +164,7 @@ export default {
   modUse: "Haz clic para añadir a la composición actual",
   modDeleteQ: "¿Eliminar el módulo «{name}»? (No afecta a las copias ya añadidas a proyectos)",
   modInserted: "Módulo «{name}» añadido a la composición actual",
+  modSwap: "Cambiar foto",
+  modSwapNeed: "Primero selecciona una capa «Foto de reemplazo» (o cualquier capa de imagen) y luego pulsa Cambiar foto",
+  modSwapDone: "Cambiada a «{name}»; se conserva el movimiento seguido",
 };

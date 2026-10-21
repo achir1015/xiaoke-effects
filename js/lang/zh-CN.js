@@ -164,4 +164,7 @@ export default {
   modUse: "点一下加到当前合成",
   modDeleteQ: "删除模块“{name}”？（已经放进项目的不受影响）",
   modInserted: "已把模块“{name}”加到当前合成",
+  modSwap: "更换照片",
+  modSwapNeed: "请先选取“替换照片”图层（或一般的图片图层），再点“更换照片”",
+  modSwapDone: "已换成“{name}”，跟踪好的动作保持不变",
 };

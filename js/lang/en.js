@@ -164,4 +164,7 @@ export default {
   modUse: "Click to add to the current composition",
   modDeleteQ: "Delete module \"{name}\"? (Copies already in projects are not affected)",
   modInserted: "Module \"{name}\" added to the current composition",
+  modSwap: "Change photo",
+  modSwapNeed: "Select a \"Replacement photo\" layer (or any image layer) first, then click Change photo",
+  modSwapDone: "Changed to \"{name}\"; the tracked motion is kept",
 };

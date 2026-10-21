@@ -164,4 +164,7 @@ export default {
   modUse: "Geçerli kompozisyona eklemek için tıklayın",
   modDeleteQ: "\"{name}\" modülü silinsin mi? (Projelere eklenmiş kopyalar etkilenmez)",
   modInserted: "\"{name}\" modülü geçerli kompozisyona eklendi",
+  modSwap: "Fotoğrafı değiştir",
+  modSwapNeed: "Önce bir \"Yeni fotoğraf\" katmanı (veya herhangi bir görüntü katmanı) seçin, sonra Fotoğrafı değiştir’e tıklayın",
+  modSwapDone: "\"{name}\" ile değiştirildi; izlenen hareket korundu",
 };

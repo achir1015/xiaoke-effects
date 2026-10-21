@@ -444,6 +444,7 @@ cmd('anim.addTextAnimator', (prop = 'opacity') => forSel('animator', l => {
 cmd('module.decompose', async () => (await import('./modules-ui.js')).decomposeFlow());
 cmd('module.saveComp', async () => (await import('./modules-ui.js')).saveCompAsModule());
 cmd('module.replacePhoto', async () => (await import('./modules-ui.js')).replacePhotoFlow());
+cmd('module.swapPhoto', async layer => (await import('./modules-ui.js')).swapPhotoFlow(layer));
 
 // ---- 播放 ----
 cmd('play.toggle', () => bus.emit('playToggle'));

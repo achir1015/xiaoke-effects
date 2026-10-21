@@ -138,6 +138,7 @@ function layerMenuItems(ls, c) {
     { label: t('rename'), key: 'Enter', disabled: dis, run: () => exec('layer.rename') },
     '-',
     { label: t('modReplace') + '…', disabled: !c, run: () => exec('module.replacePhoto') },
+    { label: t('modSwap') + '…', disabled: !(l && (l.type === 'image' || (l.type === 'precomp' && (l.photoSlot || l.effects.some(e => e.type === 'cornerPin'))))), run: () => exec('module.swapPhoto') },
     { label: t('mask'), disabled: dis, sub: [{ label: t('newMaskRect'), run: () => exec('layer.newMaskRect') }, { label: t('newMaskEllipse'), run: () => exec('layer.newMaskEllipse') }] },
     { label: t('layer3D'), checked: !!l?.threeD, disabled: dis, run: () => exec('layer.toggle3D') },
     { label: t('motionBlur'), checked: !!l?.motionBlur, disabled: dis, run: () => exec('layer.toggleMB') },

@@ -194,6 +194,9 @@ export function renderProps(el) {
   }
   const lt = S.time - l.start;
   box.append(h('div', { class: 'fxhead' }, ic(TYPE_ICON[l.type] || 'layers'), h('span', { class: 'nm' }, l.name), h('span', { class: 'fxi' }, t('type_' + l.type))));
+  // 替換照片圖層／圖片圖層：一鍵更換照片（追蹤好的動作不變）
+  if (l.type === 'image' || (l.type === 'precomp' && (l.photoSlot || l.effects.some(e => e.type === 'cornerPin'))))
+    box.append(h('div', { class: 'chips' }, h('button', { class: 'primary', onclick: () => exec('module.swapPhoto', l) }, '🖼 ' + t('modSwap'))));
   // 圖層
   const layerKids = [
     row(t('name'), h('input', { value: l.name, style: { width: '100%' }, onkeydown: e => e.stopPropagation(), onchange: e => edit('rename', () => { l.name = e.target.value; }) })),

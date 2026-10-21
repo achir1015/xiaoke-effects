@@ -164,4 +164,7 @@ export default {
   modUse: "Cliquez pour ajouter à la composition actuelle",
   modDeleteQ: "Supprimer le module « {name} » ? (Les copies déjà ajoutées aux projets ne sont pas touchées)",
   modInserted: "Module « {name} » ajouté à la composition actuelle",
+  modSwap: "Changer la photo",
+  modSwapNeed: "Sélectionnez d’abord un calque « Photo de remplacement » (ou un calque image), puis cliquez Changer la photo",
+  modSwapDone: "Remplacée par « {name} » ; le mouvement suivi est conservé",
 };

@@ -164,4 +164,7 @@ export default {
   modUse: "按一下加到目前合成",
   modDeleteQ: "刪除模組「{name}」？（已經放進專案的不受影響）",
   modInserted: "已把模組「{name}」加到目前合成",
+  modSwap: "更換照片",
+  modSwapNeed: "請先選取「替換照片」圖層（或一般的圖片圖層），再按「更換照片」",
+  modSwapDone: "已換成「{name}」，追蹤好的動作保留不變",
 };

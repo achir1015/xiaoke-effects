@@ -164,4 +164,7 @@ export default {
   modUse: "Fai clic per aggiungere alla composizione attuale",
   modDeleteQ: "Eliminare il modulo «{name}»? (Le copie già aggiunte ai progetti non cambiano)",
   modInserted: "Modulo «{name}» aggiunto alla composizione attuale",
+  modSwap: "Cambia foto",
+  modSwapNeed: "Seleziona prima un livello «Foto sostitutiva» (o un livello immagine), poi fai clic su Cambia foto",
+  modSwapDone: "Sostituita con «{name}»; il movimento tracciato resta invariato",
 };

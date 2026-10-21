@@ -164,4 +164,7 @@ export default {
   modUse: "Clique para adicionar à composição atual",
   modDeleteQ: "Excluir o módulo \"{name}\"? (Cópias já adicionadas a projetos não são afetadas)",
   modInserted: "Módulo \"{name}\" adicionado à composição atual",
+  modSwap: "Trocar foto",
+  modSwapNeed: "Selecione primeiro uma camada \"Foto substituta\" (ou qualquer camada de imagem) e clique em Trocar foto",
+  modSwapDone: "Trocada por \"{name}\"; o movimento rastreado foi mantido",
 };

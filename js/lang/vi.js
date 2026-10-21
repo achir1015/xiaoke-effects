@@ -164,4 +164,7 @@ export default {
   modUse: "Nhấp để thêm vào bố cục hiện tại",
   modDeleteQ: "Xóa mô-đun \"{name}\"? (Bản đã thêm vào dự án không bị ảnh hưởng)",
   modInserted: "Đã thêm mô-đun \"{name}\" vào bố cục hiện tại",
+  modSwap: "Đổi ảnh",
+  modSwapNeed: "Hãy chọn lớp \"Ảnh thay thế\" (hoặc một lớp ảnh bất kỳ) trước, rồi nhấp Đổi ảnh",
+  modSwapDone: "Đã đổi thành \"{name}\"; chuyển động đã theo dõi được giữ nguyên",
 };

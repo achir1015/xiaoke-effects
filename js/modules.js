@@ -412,10 +412,39 @@ export function buildPhotoLayer(project, comp, videoLayer, photoFootage, track, 
     ids.forEach((id, c) => { const kf = setKey(e.params[id], ct - pl.start, [fr.pts[c][0], fr.pts[c][1]]); kf.ti = 'linear'; });
   }
   pl.effects.push(e);
+  pl.photoSlot = true;   // 之後「更換照片」認得這個圖層
   // 只在追蹤到的時間出現（追丟＝畫面換掉之後，照片就不該再釘在那裡）
   const ts = track.map(fr => fr.t + videoLayer.start);
   pl.in = Math.max(0, Math.min(...ts)); pl.out = Math.min(comp.duration, Math.max(...ts) + 1 / comp.fps);
   const at = comp.layers.indexOf(videoLayer);
   comp.layers.splice(Math.max(0, at), 0, pl);
   return pl;
+}
+
+// ---------------- 更換照片：保留追蹤好的動作，只換照片 ----------------
+// 「替換照片」圖層（巢狀合成＋邊角釘選）或一般圖片圖層 → 要換的圖片圖層與它所在的合成
+export function photoSlotOf(project, comp, l) {
+  if (!l) return null;
+  if (l.type === 'image') return { comp, img: l, slot: false };
+  if (l.type === 'precomp') {
+    const inner = M.getComp(project, l.comp);
+    const imgs = inner?.layers.filter(x => x.type === 'image') || [];
+    if (imgs.length === 1 && (l.photoSlot || l.effects.some(e => e.type === 'cornerPin'))) return { comp: inner, img: imgs[0], slot: true };
+  }
+  return null;
+}
+// 換掉圖片：替換照片的槽一律填滿整個畫面（四角釘選才會對到相框）；一般圖片維持原本在畫面上的寬度
+export function swapPhoto(project, s, f) {
+  const img = s.img, old = M.getFootage(project, img.source);
+  img.source = f.id; img.name = f.name;
+  const tr = img.transform;
+  tr.anchor.v = [f.w / 2, f.h / 2, 0]; delete tr.anchor.k;
+  if (s.slot) {
+    const k = Math.max(s.comp.w / (f.w || 1), s.comp.h / (f.h || 1)) * 100;
+    tr.scale.v = [k, k, 100]; delete tr.scale.k;
+    tr.position.v = [s.comp.w / 2, s.comp.h / 2, 0]; delete tr.position.k;
+  } else if (old?.w && !tr.scale.k) {
+    const k = tr.scale.v[0] * old.w / (f.w || 1);
+    tr.scale.v = [k, k * (tr.scale.v[1] / (tr.scale.v[0] || 1)), tr.scale.v[2] ?? 100];
+  }
 }

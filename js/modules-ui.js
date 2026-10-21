@@ -178,6 +178,20 @@ export async function replacePhotoFlow() {
   }
 }
 
+// ---------------- 更換照片（一鍵）：選好「替換照片」圖層，挑新照片就換好，追蹤的動作不變 ----------------
+export async function swapPhotoFlow(layer) {
+  const c = comp(); if (!c) { toast(t('needComp'), 'warn'); return; }
+  const l = layer || firstSel();
+  const s = Mod.photoSlotOf(S.project, c, l) || (!l ? Mod.photoSlotOf(S.project, c, c.layers.find(x => x.photoSlot)) : null);
+  if (!s) { toast(t('modSwapNeed'), 'warn', 4000); return; }
+  const [file] = await pickFiles('image/*', false);
+  if (!file) return;
+  let f;
+  try { f = await Media.importFile(file); } catch { toast(t('importFail', { name: file.name }), 'warn'); return; }
+  edit('swapPhoto', () => { S.project.footage.push(f); Mod.swapPhoto(S.project, s, f); });
+  toast(t('modSwapDone', { name: file.name }), '', 4000);
+}
+
 // ---------------- 素材庫的「我的模組」分頁 ----------------
 export async function renderModuleLib(grid) {
   grid.innerHTML = '';
