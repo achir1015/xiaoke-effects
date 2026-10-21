@@ -440,6 +440,11 @@ cmd('anim.addTextAnimator', (prop = 'opacity') => forSel('animator', l => {
   l.text.animators.push(M.textAnimator({ name: t('animator') + ' ' + (l.text.animators.length + 1), props: { [prop]: P(clone(defs[prop])) } }));
 }));
 
+// ---- 模組自製 ----
+cmd('module.decompose', async () => (await import('./modules-ui.js')).decomposeFlow());
+cmd('module.saveComp', async () => (await import('./modules-ui.js')).saveCompAsModule());
+cmd('module.replacePhoto', async () => (await import('./modules-ui.js')).replacePhotoFlow());
+
 // ---- 播放 ----
 cmd('play.toggle', () => bus.emit('playToggle'));
 cmd('play.first', () => setTime(comp()?.workIn ?? 0));

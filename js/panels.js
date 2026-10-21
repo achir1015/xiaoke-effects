@@ -385,16 +385,19 @@ export function renderEffectsPanel(el, mode = 'effects') {
 
 // ================= 素材庫 =================
 let libTab = 'templates';
+export const setLibTab = id => { libTab = id; };
 export function renderLibrary(el) {
   el.innerHTML = '';
   const tabs = h('div', { class: 'libtabs' });
   const grid = h('div', { class: 'libgrid' });
-  const TABS = [['templates', t('lib_templates')], ['bg', t('lib_bg')], ['fx', t('lib_fx')], ['stickers', t('lib_stickers')], ['music', t('lib_music')]];
+  const TABS = [['modules', t('lib_modules')], ['templates', t('lib_templates')], ['bg', t('lib_bg')], ['fx', t('lib_fx')], ['stickers', t('lib_stickers')], ['music', t('lib_music')]];
   for (const [id, label] of TABS) tabs.append(h('button', { class: libTab === id ? 'on' : '', onclick: () => { libTab = id; renderLibrary(el); } }, label));
   el.append(tabs, h('div', { class: 'small dim', style: { padding: '0 10px' } }, t('libHint')), h('div', { style: { overflow: 'auto', flex: 1 } }, grid));
   const thumb = (w, hh, fn) => { const cv = h('canvas', { width: w, height: hh }); requestIdleCallback?.(() => { try { fn(cv.getContext('2d'), w, hh); } catch { } }) ?? setTimeout(() => { try { fn(cv.getContext('2d'), w, hh); } catch { } }); return cv; };
   const needC = () => { const c = comp(); if (!c) toast(t('needComp'), 'warn'); return c; };
-  if (libTab === 'templates') {
+  if (libTab === 'modules') {
+    import('./modules-ui.js').then(m => m.renderModuleLib(grid));
+  } else if (libTab === 'templates') {
     import('./templates.js').then(({ TEMPLATES, thumbFor }) => {
       for (const tp of TEMPLATES) {
         const it = h('div', { class: 'libitem', title: t('tpl_' + tp.id + '_d') }, thumbFor(tp.id), h('span', null, t('tpl_' + tp.id)));

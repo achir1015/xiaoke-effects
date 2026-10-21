@@ -41,6 +41,9 @@ function menus() {
       { label: t('exportLottie') + '…', disabled: !c, run: () => quickExport('lottie') },
       { label: t('exportVideo') + '…', key: K('Ctrl+M'), disabled: !c, run: () => exportFlow() },
       { label: t('tvMenu') + '…', disabled: !c, run: () => exec('file.toVideo') },
+      '-',
+      { label: t('modMenu') + '…', run: () => exec('module.decompose') },
+      { label: t('modSaveComp'), disabled: !c, run: () => exec('module.saveComp') },
       { label: t('addToRQ'), key: K('Ctrl+Shift+/'), disabled: !c, run: () => exec('comp.addToRQ') },
       '-',
       { label: t('openEngine'), run: openEngine },
@@ -134,6 +137,7 @@ function layerMenuItems(ls, c) {
     { label: t('layerSettings') + '…', disabled: dis, run: () => exec('layer.settings') },
     { label: t('rename'), key: 'Enter', disabled: dis, run: () => exec('layer.rename') },
     '-',
+    { label: t('modReplace') + '…', disabled: !c, run: () => exec('module.replacePhoto') },
     { label: t('mask'), disabled: dis, sub: [{ label: t('newMaskRect'), run: () => exec('layer.newMaskRect') }, { label: t('newMaskEllipse'), run: () => exec('layer.newMaskEllipse') }] },
     { label: t('layer3D'), checked: !!l?.threeD, disabled: dis, run: () => exec('layer.toggle3D') },
     { label: t('motionBlur'), checked: !!l?.motionBlur, disabled: dis, run: () => exec('layer.toggleMB') },
@@ -301,6 +305,7 @@ bus.on('comp', () => { buildCompTabs(); buildViewFoot(); Viewer.setZoom('fit'); 
 bus.on('time', () => { requestDraw(); updateTC(); });
 bus.on('view', () => { buildViewFoot(); requestDraw(); });
 bus.on('zoomChanged', () => { const z = $('viewFoot').querySelector('.zsel'); if (z) z.value = S.zoom === 'fit' ? 'fit' : ''; });
+bus.on('libTab', async id => { (await import('./panels.js')).setLibTab(id); right.show('library'); if (isMobile()) mobileTab('library'); });
 bus.on('cache', () => { if (right.current() === 'preview') { const el = $('pRight').querySelector('.page:not(.hidden)'); el?._update?.(); } });
 
 // 檢視器上方的合成頁籤與下方工具列

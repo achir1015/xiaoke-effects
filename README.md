@@ -19,6 +19,7 @@
 - 動畫預設集 48 種、素材庫（貼圖、動態背景、動態特效、110 首配樂，取自小柯影音剪輯助手）
 - 匯出 MP4（H.264＋AAC）、WebM、GIF、PNG 單張／序列（ZIP，透明背景）、WAV、Lottie JSON；可匯入 Lottie
 - 算繪佇列、專案檔 `.xke`（JSON，內含素材）、自動儲存在瀏覽器
+- **模組自製**：把做好的影片自動依換場拆成多個模組（名稱＝日期＋影片名稱＋流水號），存進「我的模組」跨專案使用；「替換照片」可在模組裡點相框四角、逐格追蹤後把自己的照片貼進同樣的動作（`js/modules.js`）
 - **送到小柯影音剪輯助手**：把合成算成（透明背景的）WebM，放進 [小柯影音剪輯助手](https://achir1015.github.io/xiaoke-video/) 素材箱的「特效動畫」（網頁版共用瀏覽器資料庫 `xiaoke-shared`，桌面版共用「影片\小柯動畫素材」資料夾；格式見 `js/shared.js`）
 - 所有命令都有 ID，可用 `window.xiaokeFX.execute('layer.newText', {...})` 自動化
 - 「說明 ▸ 開啟原版 EffectCraft 引擎」：在新分頁開啟原版的 WebAssembly 瀏覽器版（306 種特效）
