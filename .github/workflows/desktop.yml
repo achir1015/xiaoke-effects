@@ -161,7 +161,11 @@ jobs:
           ditto "dist/小柯機器人動態圖形和視覺特效工具.app" "dmg/小柯機器人動態圖形和視覺特效工具.app"
           ln -s /Applications dmg/Applications
           cp desktop/MAC_README.txt "dmg/第一次開啟請看這裡.txt"
-          hdiutil create -volname "小柯機器人動態圖形和視覺特效工具" -srcfolder dmg -ov -format UDZO "XiaokeEffects-mac-${{ matrix.arch }}-${{ needs.check.outputs.ver }}.dmg"
+          # GitHub 的 Mac 偶爾回報「Resource busy」：重試幾次
+          for n in 1 2 3 4 5; do
+            hdiutil create -volname "小柯機器人動態圖形和視覺特效工具" -srcfolder dmg -ov -format UDZO "XiaokeEffects-mac-${{ matrix.arch }}-${{ needs.check.outputs.ver }}.dmg" && break
+            echo "hdiutil 第 $n 次失敗，稍後重試"; sleep 15
+          done
           ls -lh *.dmg
       - uses: actions/upload-artifact@v4
         if: always()
