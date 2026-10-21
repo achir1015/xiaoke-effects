@@ -1,0 +1,54 @@
+name: 檢查並發佈線上網頁版
+
+# 推到 main：檢查版本號、語言檔、語法 → 下載原版 EffectCraft 引擎放到 engine/ → 發佈到 GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 檢查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: 版本號一致
+        run: |
+          V=$(python3 -c 'import json;print(json.load(open("version.json"))["version"])')
+          grep -q "export const APP_VERSION = '$V';" js/updater.js || { echo "::error::js/updater.js 的 APP_VERSION 和 version.json（$V）不一致"; exit 1; }
+      - name: 13 種語言字串完整
+        run: node tools/check_i18n.mjs
+      - name: JavaScript 語法
+        run: for f in js/*.js js/lang/*.js js/lang-fx/*.js sw.js; do node --check "$f" || exit 1; done
+
+  deploy:
+    name: 發佈
+    needs: check
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.dep.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 下載原版 EffectCraft 引擎
+        run: python3 tools/fetch_engine.py
+      - name: 整理網站檔案
+        run: |
+          mkdir _site
+          cp -r index.html version.json manifest.webmanifest sw.js favicon.svg favicon-16.png favicon-32.png apple-touch-icon.png css js vendor icons engine _site/
+          rm -rf _site/js/__pycache__
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: _site }
+      - id: dep
+        uses: actions/deploy-pages@v4

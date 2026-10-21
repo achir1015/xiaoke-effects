@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>效果測試</title>
+<style>
+  body { margin: 0; padding: 12px; background: #1b1d22; color: #ddd; font: 12px/1.4 system-ui, sans-serif; }
+  #sum { font-size: 14px; margin-bottom: 10px; white-space: pre-wrap; }
+  #grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cell { width: 192px; }
+  .cell canvas { width: 192px; height: 108px; display: block; border: 1px solid #333; }
+  .cell.bad canvas { border-color: #f44; }
+  .cell.warn canvas { border-color: #fa0; }
+  .cell div { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .cat { width: 100%; margin: 8px 0 2px; color: #8cf; font-weight: bold; }
+</style>
+</head>
+<body>
+<div id="sum">執行中…</div>
+<div id="grid"></div>
+<script type="module">
+import * as FX from '../js/fx.js';
+import zh from '../js/lang-fx/zh-TW.js';
+import en from '../js/lang-fx/en.js';
+
+const W = 480, H = 270;
+// 測試圖：透明邊界 + 漸層圓角矩形 + 圓 + 文字 + 綠/藍色塊
+function testImage(w, h) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); const k = w / 480;
+  const gr = g.createLinearGradient(40 * k, 0, w - 40 * k, 0);
+  ['#e33', '#fc3', '#3c5', '#38f', '#a3e'].forEach((col, i) => gr.addColorStop(i / 4, col));
+  g.fillStyle = gr; g.beginPath(); g.roundRect(40 * k, 40 * k, w - 80 * k, h - 80 * k, 24 * k); g.fill();
+  g.fillStyle = '#fff'; g.beginPath(); g.arc(w * 0.3, h * 0.5, 50 * k, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#1c9c33'; g.fillRect(w * 0.62, h * 0.28, 60 * k, 40 * k);
+  g.fillStyle = '#2650f0'; g.fillRect(w * 0.62, h * 0.56, 60 * k, 40 * k);
+  g.fillStyle = '#111'; g.font = `bold ${36 * k}px sans-serif`; g.fillText('小柯 FX', w * 0.4, h * 0.56);
+  return c;
+}
+const src = testImage(W, H);
+const srcData = src.getContext('2d').getImageData(0, 0, W, H).data;
+const info = { time: 1.0, compTime: 1.0, fps: 30, width: W, height: H, scale: 1, seed: 7 };
+const ok = [], failed = [], warnings = [];
+const grid = document.getElementById('grid');
+const an = document.createElement('canvas'); an.width = W; an.height = H;
+const ag = an.getContext('2d', { willReadFrequently: true });
+
+function params(def, w, h) {
+  const o = FX.defaultParams(def.id);
+  for (const p of def.params) if (p.type === 'point') o[p.id] = [p.def[0] * w, p.def[1] * h];
+  return o;
+}
+function i18nCheck(def) {
+  const miss = [];
+  const keys = ['fx.' + def.id, 'fxcat.' + def.cat];
+  for (const p of def.params) {
+    keys.push(`fxp.${def.id}.${p.id}`);
+    if (p.type === 'select') for (const v of p.options) keys.push(`fxo.${def.id}.${p.id}.${v}`);
+  }
+  for (const k of keys) { if (!(k in zh)) miss.push('zh:' + k); if (!(k in en)) miss.push('en:' + k); }
+  return miss;
+}
+
+FX.fxDebug.enabled = true;
+const avail = FX.fxAvailable();
+let lastCat = '';
+for (const def of FX.EFFECTS) {
+  if (def.cat !== lastCat) { lastCat = def.cat; const d = document.createElement('div'); d.className = 'cat'; d.textContent = def.cat + ' / ' + (zh['fxcat.' + def.cat] || ''); grid.appendChild(d); }
+  const cell = document.createElement('div'); cell.className = 'cell';
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const lab = document.createElement('div'); lab.textContent = def.id + ' ' + (zh['fx.' + def.id] || '');
+  cell.append(cv, lab); grid.appendChild(cell);
+  const errs = [];
+  try {
+    FX.fxDebug.errors.length = 0;
+    const out = FX.applyEffects(src, [{ id: def.id, params: params(def, W, H) }], info);
+    if (FX.fxDebug.errors.length) errs.push(...FX.fxDebug.errors.map((e) => e.error));
+    if (!out || out.width !== W || out.height !== H) errs.push('輸出尺寸錯誤');
+    const g = cv.getContext('2d');
+    for (let y = 0; y < H; y += 16) for (let x = 0; x < W; x += 16) { g.fillStyle = ((x + y) / 16) % 2 ? '#555' : '#777'; g.fillRect(x, y, 16, 16); }
+    g.drawImage(out, 0, 0);
+    ag.clearRect(0, 0, W, H); ag.drawImage(out, 0, 0);
+    const d = ag.getImageData(0, 0, W, H).data;
+    let diff = 0, alpha = 0;
+    for (let i = 0; i < d.length; i += 4) { diff += Math.abs(d[i] - srcData[i]) + Math.abs(d[i + 1] - srcData[i + 1]) + Math.abs(d[i + 2] - srcData[i + 2]) + Math.abs(d[i + 3] - srcData[i + 3]); alpha += d[i + 3]; }
+    const md = diff / (W * H);
+    if (md < 0.05) { warnings.push({ id: def.id, warn: '幾乎無變化 ' + md.toFixed(3) }); cell.classList.add('warn'); }
+    if (alpha === 0) { warnings.push({ id: def.id, warn: '輸出完全透明' }); cell.classList.add('warn'); }
+    lab.title = 'diff ' + md.toFixed(2);
+  } catch (e) { errs.push(String(e && e.message || e)); }
+  const miss = i18nCheck(def);
+  if (miss.length) errs.push('缺少字串: ' + miss.join(', '));
+  if (errs.length) { failed.push({ id: def.id, error: errs.join(' | ') }); cell.classList.add('bad'); lab.style.color = '#f66'; }
+  else ok.push(def.id);
+}
+
+// 每個分類都要有效果
+const emptyCats = FX.FX_CATEGORIES.filter((c) => !FX.EFFECTS.some((e) => e.cat === c));
+for (const c of emptyCats) failed.push({ id: 'cat:' + c, error: '分類沒有效果' });
+
+// 1920x1080 效能：高斯模糊 40 + 發光
+const big = testImage(1920, 1080);
+const one = document.createElement('canvas'); one.width = one.height = 1;
+const og = one.getContext('2d', { willReadFrequently: true });
+const list = [{ id: 'gaussianBlur', params: { blurriness: 40 } }, { id: 'glow', params: {} }];
+const binfo = { ...info, width: 1920, height: 1080 };
+const sync = (o) => { og.drawImage(o, 0, 0, 1, 1, 0, 0, 1, 1); og.getImageData(0, 0, 1, 1); };
+for (let i = 0; i < 3; i++) sync(FX.applyEffects(big, list, binfo));
+const N = 10; const t0 = performance.now();
+for (let i = 0; i < N; i++) sync(FX.applyEffects(big, list, binfo));
+const perf = (performance.now() - t0) / N;
+
+window.FX_RESULT = { available: avail, count: FX.EFFECTS.length, ok, failed, warnings, perf1080ms: +perf.toFixed(2) };
+document.getElementById('sum').textContent =
+  `WebGL2: ${avail}　效果數: ${FX.EFFECTS.length}　通過: ${ok.length}　失敗: ${failed.length}　警告: ${warnings.length}　1080p 高斯40+發光: ${perf.toFixed(1)} ms\n` +
+  failed.map((f) => '✗ ' + f.id + ': ' + f.error).join('\n') + (warnings.length ? '\n' + warnings.map((w) => '! ' + w.id + ': ' + w.warn).join('\n') : '');
+</script>
+</body>
+</html>

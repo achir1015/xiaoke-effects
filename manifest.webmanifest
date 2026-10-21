@@ -1,0 +1,21 @@
+{
+  "name": "小柯機器人動態圖形和視覺特效工具",
+  "short_name": "小柯特效",
+  "description": "免費的動態圖形與視覺特效合成工具：圖層、關鍵影格、表達式、110 種特效、3D 鏡頭，匯出 MP4／GIF／PNG／Lottie。檔案只在你的裝置上處理。",
+  "lang": "zh-Hant",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#121315",
+  "theme_color": "#121315",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "新增專案（範本）", "short_name": "新增", "url": "./?action=new", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "匯入素材", "short_name": "匯入", "url": "./?action=import", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
