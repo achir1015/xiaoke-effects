@@ -154,12 +154,22 @@ export async function listModules() {
   // 新的一批在前面；同一批（一分鐘內建立的）依流水號排
   return all.map(({ comps, footage, ...x }) => x).sort((a, b) => Math.floor(b.created / 60000) - Math.floor(a.created / 60000) || a.name.localeCompare(b.name, 'zh-Hant', { numeric: true }));
 }
-export async function deleteModule(id) {
-  await tx('mods', 'readwrite', s => s.delete(id));
+export const deleteModule = id => deleteModules([id]);
+export async function deleteModules(ids) {
+  for (const id of ids) await tx('mods', 'readwrite', s => s.delete(id));
   // 沒有模組再用到的素材檔也刪掉
   const all = (await tx('mods', 'readonly', s => s.getAll())) || [];
   const used = new Set(all.flatMap(m => m.footage.map(f => f.blobKey)));
   for (const k of (await tx('media', 'readonly', s => s.getAllKeys())) || []) if (!used.has(k)) await tx('media', 'readwrite', s => s.delete(k));
+}
+// 隱藏／取消隱藏（只是不在「我的模組」顯示，資料還在）
+export async function setModulesHidden(ids, v) {
+  for (const id of ids) {
+    const rec = await tx('mods', 'readonly', s => s.get(id));
+    if (!rec) continue;
+    if (v) rec.hidden = true; else delete rec.hidden;
+    await tx('mods', 'readwrite', s => s.put(rec));
+  }
 }
 // 把模組放進專案：素材（已經有的就共用）、合成換新 id；回傳模組的主合成
 export async function insertModule(project, id) {

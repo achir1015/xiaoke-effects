@@ -2,7 +2,8 @@
 import { S, bus, comp, edit, changed, history, openComp, firstSel, select } from './state.js';
 import { h, timecode, clamp } from './util.js';
 import { t } from './i18n.js';
-import { modal, toast, pickFiles } from './ui.js';
+import { modal, toast, pickFiles, dropdown, confirmBox } from './ui.js';
+import { longPress } from './panels.js';
 import * as M from './model.js';
 import * as Media from './media.js';
 import * as Mod from './modules.js';
@@ -193,22 +194,78 @@ export async function swapPhotoFlow(layer) {
 }
 
 // ---------------- 素材庫的「我的模組」分頁 ----------------
+// 我的模組：一般點一下＝放進合成；Ctrl／⌘、Shift 點或「選取」模式＝多選；右鍵（觸控長按）＝刪除／隱藏等
+const modPick = new Set();
+let modAnchor = null, modSelMode = false, modShowHidden = false;
 export async function renderModuleLib(grid) {
   grid.innerHTML = '';
-  let mods = [];
-  try { mods = await Mod.listModules(); } catch (e) { console.warn(e); }
-  grid.append(h('div', { style: { gridColumn: '1/-1', display: 'flex', gap: '6px', flexWrap: 'wrap' } },
+  let all = [];
+  try { all = await Mod.listModules(); } catch (e) { console.warn(e); }
+  const hiddenN = all.filter(m => m.hidden).length;
+  const mods = all.filter(m => modShowHidden || !m.hidden);
+  for (const id of [...modPick]) if (!mods.some(m => m.id === id)) modPick.delete(id);
+  const again = () => renderModuleLib(grid);
+  const picked = () => mods.filter(m => modPick.has(m.id));
+  const bar = h('div', { style: { gridColumn: '1/-1', display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' } },
     h('button', { class: 'primary', onclick: () => decomposeFlow() }, '✂ ' + t('modMenu')),
-    h('button', { onclick: () => saveCompAsModule() }, '＋ ' + t('modSaveComp'))));
-  if (!mods.length) { grid.append(h('p', { class: 'small dim', style: { gridColumn: '1/-1' } }, t('modLibEmpty'))); return; }
-  for (const m of mods) {
+    h('button', { onclick: () => saveCompAsModule() }, '＋ ' + t('modSaveComp')));
+  if (mods.length) bar.append(h('button', { class: modSelMode ? 'on' : '', title: t('modSelTip'), onclick: () => { modSelMode = !modSelMode; if (!modSelMode) modPick.clear(); again(); } }, '☑ ' + (modSelMode ? t('modSelDone') : t('modSelect'))));
+  if (hiddenN) bar.append(h('button', { class: modShowHidden ? 'on' : '', title: t('showHiddenTip'), onclick: () => { modShowHidden = !modShowHidden; again(); } }, '🙈 ' + t('hiddenN', { n: hiddenN })));
+  if (modPick.size) bar.append(h('span', { class: 'small' }, t('pickedN', { n: modPick.size })),
+    h('button', { onclick: () => hideMods(picked(), !picked().every(m => m.hidden), again) }, picked().every(m => m.hidden) ? t('unhide') : t('hide')),
+    h('button', { class: 'danger', onclick: () => deleteMods(picked(), again) }, t('delete')));
+  grid.append(bar);
+  if (!mods.length) { grid.append(h('p', { class: 'small dim', style: { gridColumn: '1/-1' } }, t(all.length ? 'modAllHidden' : 'modLibEmpty'))); return; }
+  mods.forEach((m, i) => {
+    const on = modPick.has(m.id);
     const del = h('button', { class: 'icon', title: t('delete'), style: { position: 'absolute', top: '2px', right: '2px', background: '#000a', width: '22px', height: '22px' } }, '✕');
-    const it = h('div', { class: 'libitem', title: `${m.name}（${t('modUse')}）`, style: { position: 'relative' } },
-      m.thumb ? h('img', { src: m.thumb }) : h('div', { style: { aspectRatio: '16/9', background: '#000' } }), h('span', null, m.name), h('span', { class: 'dim', style: { paddingTop: 0 } }, `${(m.dur || 0).toFixed(1)}s`), del);
-    del.addEventListener('click', async e => { e.stopPropagation(); if (!confirm(t('modDeleteQ', { name: m.name }))) return; await Mod.deleteModule(m.id); renderModuleLib(grid); });
-    it.addEventListener('click', () => useModule(m));
+    const it = h('div', { class: 'libitem' + (on ? ' picked' : ''), title: `${m.name}（${t('modUse')}）`, style: { position: 'relative', opacity: m.hidden ? 0.45 : 1 } },
+      m.thumb ? h('img', { src: m.thumb }) : h('div', { style: { aspectRatio: '16/9', background: '#000' } }), h('span', null, (m.hidden ? '🙈 ' : '') + m.name), h('span', { class: 'dim', style: { paddingTop: 0 } }, `${(m.dur || 0).toFixed(1)}s`),
+      modSelMode || modPick.size ? h('span', { class: 'pickbox' }, on ? '✓' : '') : del);
+    del.addEventListener('click', e => { e.stopPropagation(); deleteMods([m], again); });
+    it.addEventListener('click', e => {
+      if (e.shiftKey && modAnchor) {
+        const a = mods.findIndex(x => x.id === modAnchor);
+        if (!(e.ctrlKey || e.metaKey)) modPick.clear();
+        for (let k = Math.min(a, i); k <= Math.max(a, i); k++) modPick.add(mods[k].id);
+      } else if (e.ctrlKey || e.metaKey || modSelMode || modPick.size) { if (on) modPick.delete(m.id); else modPick.add(m.id); modAnchor = m.id; }
+      else return useModule(m);
+      again();
+    });
+    const menu = (x, y) => {
+      if (!modPick.has(m.id)) { modPick.clear(); modPick.add(m.id); modAnchor = m.id; again(); }
+      const sel = mods.filter(z => modPick.has(z.id)), n = sel.length;
+      dropdown([
+        n > 1 ? { label: t('pickedN', { n }), disabled: true } : { label: t('modUse'), run: () => useModule(m) },
+        '-',
+        { label: t('selectAll'), run: () => { mods.forEach(z => modPick.add(z.id)); again(); } },
+        { label: t('deselect'), run: () => { modPick.clear(); again(); } },
+        '-',
+        sel.some(z => !z.hidden) ? { label: n > 1 ? t('hideN', { n }) : t('hide'), run: () => hideMods(sel, true, again) } : null,
+        sel.some(z => z.hidden) ? { label: n > 1 ? t('unhideN', { n }) : t('unhide'), run: () => hideMods(sel, false, again) } : null,
+        { label: n > 1 ? t('deleteN', { n }) : t('delete'), key: 'Delete', run: () => deleteMods(sel, again) },
+      ], x, y);
+    };
+    it.addEventListener('contextmenu', e => { e.preventDefault(); menu(e.clientX, e.clientY); });
+    longPress(it, menu);
     grid.append(it);
-  }
+  });
+}
+async function hideMods(list, v, again) {
+  if (!list.length) return;
+  await Mod.setModulesHidden(list.map(m => m.id), v);
+  if (v && !modShowHidden) list.forEach(m => modPick.delete(m.id));
+  toast(t(v ? 'hiddenDone' : 'unhiddenDone', { n: list.length }));
+  again();
+}
+async function deleteMods(list, again) {
+  if (!list.length) return;
+  const msg = list.length > 1 ? t('deleteNQ', { n: list.length }) : t('modDeleteQ', { name: list[0].name });
+  if (!await confirmBox(msg, t('delete'))) return;
+  await Mod.deleteModules(list.map(m => m.id));
+  list.forEach(m => modPick.delete(m.id));
+  toast(t('deletedN', { n: list.length }));
+  again();
 }
 // 使用模組：放進專案；目前有開著的合成就當作巢狀合成加在播放頭位置，否則直接開啟模組
 export async function useModule(m) {

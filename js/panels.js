@@ -1,6 +1,6 @@
 // 面板：專案、效果控制、屬性、效果與預設集、素材庫、預覽、算繪佇列
 import { S, bus, comp, edit, changed, history, selLayers, firstSel, select, setTime, openComp, getPath } from './state.js';
-import { h, clamp, fmtBytes, timecode, rgbaToHex, hexToRgba, css, clone } from './util.js';
+import { h, uid, clamp, fmtBytes, timecode, rgbaToHex, hexToRgba, css, clone } from './util.js';
 import { t, has } from './i18n.js';
 import { ic, TYPE_ICON } from './icons.js';
 import { sel, scrub, colorInput, dropdown, toast, confirmBox, promptBox, modal } from './ui.js';
@@ -40,12 +40,16 @@ export function tabbed(container, tabs, initial) {
 
 // ================= 專案面板 =================
 let projSearch = '';
+let projShowHidden = false;
+const projPick = new Set();     // 多選：Ctrl／⌘ 點一下加減、Shift 選一段；按右鍵（觸控長按）對選取的項目操作
+let projAnchor = null;
 export function renderProject(el) {
   el.innerHTML = '';
   const p = S.project;
   const info = h('div', { class: 'proj-info' });
   const item = S.projSel && (M.getComp(p, S.projSel) || M.getFootage(p, S.projSel));
-  if (item) {
+  if (projPick.size > 1) info.append(h('span', { class: 'small', style: { margin: 'auto' } }, t('projPicked', { n: projPick.size })));
+  else if (item) {
     const isComp = !!item.layers;
     const th = h('canvas', { width: 192, height: 108 });
     if (isComp) { try { const tmp = document.createElement('canvas'); renderComp(p, item, Math.min(item.duration / 2, 1), tmp, { scale: Math.min(1, 192 / item.w) }); th.getContext('2d').drawImage(tmp, 0, 0, 192, 108); } catch { } }
@@ -53,29 +57,72 @@ export function renderProject(el) {
     info.append(th, h('div', { class: 'small' }, h('b', null, item.name), h('br'), item.w ? `${item.w} × ${item.h}` : '', item.fps ? ` · ${item.fps} fps` : '', h('br'), item.duration ? t('durationIs', { d: timecode(item.duration, item.fps || 30) }) : '', item.size ? ' · ' + fmtBytes(item.size) : ''));
   } else info.append(h('span', { class: 'dim small', style: { margin: 'auto' } }, t('selectItemHint')));
   const search = h('div', { class: 'search' }, ic('zoom'), h('input', { placeholder: t('searchProject'), value: projSearch, oninput: e => { projSearch = e.target.value.toLowerCase(); renderList(); }, onkeydown: e => e.stopPropagation() }));
-  const list = h('div', { class: 'list' });
+  const list = h('div', { class: 'list', tabindex: 0 });
+  const all = () => [...p.comps.map(c => ({ c, kind: 'comp' })), ...p.footage.map(f => ({ f, kind: f.kind }))];
+  let visible = [];
+  // 選取的項目（不在畫面上的不算）
+  const picked = () => visible.filter(x => projPick.has((x.c || x.f).id));
   const renderList = () => {
     list.innerHTML = '';
-    const items = [...p.comps.map(c => ({ c, kind: 'comp' })), ...p.footage.map(f => ({ f, kind: f.kind }))].filter(x => !projSearch || (x.c || x.f).name.toLowerCase().includes(projSearch));
-    if (!items.length) list.append(h('div', { class: 'empty' }, t('projectEmpty'), h('br'), h('br'), h('button', { class: 'primary', onclick: () => exec('comp.new') }, t('newComp')), ' ', h('button', { onclick: () => exec('file.import') }, t('import'))));
-    for (const x of items) {
+    visible = all().filter(x => (projShowHidden || !(x.c || x.f).hidden) && (!projSearch || (x.c || x.f).name.toLowerCase().includes(projSearch)));
+    for (const id of [...projPick]) if (!visible.some(x => (x.c || x.f).id === id)) projPick.delete(id);
+    if (!visible.length) list.append(h('div', { class: 'empty' }, t('projectEmpty'), h('br'), h('br'), h('button', { class: 'primary', onclick: () => exec('comp.new') }, t('newComp')), ' ', h('button', { onclick: () => exec('file.import') }, t('import'))));
+    visible.forEach((x, i) => {
       const o = x.c || x.f;
-      const row = h('div', { class: 'row' + (S.projSel === o.id ? ' on' : ''), draggable: true }, ic(x.kind === 'comp' ? 'comp' : TYPE_ICON[x.kind] || 'image'), h('span', { class: 'nm' }, o.name), h('span', { class: 'ty' }, t('kind_' + x.kind)));
+      const row = h('div', { class: 'row' + (projPick.has(o.id) ? ' on' : ''), draggable: true, style: o.hidden ? { opacity: 0.45 } : null },
+        ic(x.kind === 'comp' ? 'comp' : TYPE_ICON[x.kind] || 'image'), h('span', { class: 'nm' }, (o.hidden ? '🙈 ' : '') + o.name), h('span', { class: 'ty' }, t('kind_' + x.kind)));
       if (x.f && Media.isMissing(x.f)) row.append(h('span', { class: 'small', style: { color: 'var(--warn)' } }, '⚠'));
-      row.addEventListener('click', () => { S.projSel = o.id; renderProject(el); });
+      row.addEventListener('click', e => {
+        if (e.shiftKey && projAnchor) {
+          const a = visible.findIndex(y => (y.c || y.f).id === projAnchor);
+          if (!(e.ctrlKey || e.metaKey)) projPick.clear();
+          for (let k = Math.min(a, i); k <= Math.max(a, i); k++) projPick.add((visible[k].c || visible[k].f).id);
+        } else if (e.ctrlKey || e.metaKey) { if (projPick.has(o.id)) projPick.delete(o.id); else projPick.add(o.id); projAnchor = o.id; }
+        else { projPick.clear(); projPick.add(o.id); projAnchor = o.id; }
+        S.projSel = o.id;
+        renderProject(el);
+      });
       row.addEventListener('dblclick', () => { if (x.c) openComp(o.id); else { const c = comp(); if (c) edit('addLayer', () => addFootageLayer(c, o)); } });
       row.addEventListener('dragstart', e => { e.dataTransfer.setData('text/x-xke-item', o.id); e.dataTransfer.effectAllowed = 'copy'; });
-      row.addEventListener('contextmenu', e => { e.preventDefault(); S.projSel = o.id; projectItemMenu(e.clientX, e.clientY, x, el); });
+      const menu = (cx, cy) => {
+        if (!projPick.has(o.id)) { projPick.clear(); projPick.add(o.id); projAnchor = o.id; }
+        S.projSel = o.id;
+        renderProject(el);
+        const sel = all().filter(y => projPick.has((y.c || y.f).id));
+        if (sel.length > 1) projectMultiMenu(cx, cy, sel, el); else projectItemMenu(cx, cy, x, el);
+      };
+      row.addEventListener('contextmenu', e => { e.preventDefault(); menu(e.clientX, e.clientY); });
+      longPress(row, (cx, cy) => menu(cx, cy));
       list.append(row);
-    }
+    });
   };
   renderList();
+  list.addEventListener('keydown', e => {
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); e.stopPropagation(); deleteProjectItems(picked(), el); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') { e.preventDefault(); e.stopPropagation(); visible.forEach(x => projPick.add((x.c || x.f).id)); renderProject(el); }
+  });
+  const hiddenN = all().filter(x => (x.c || x.f).hidden).length;
   const foot = h('div', { class: 'pfoot' },
     h('button', { class: 'icon', title: t('newComp'), onclick: () => exec('comp.new') }, ic('newcomp')),
     h('button', { class: 'icon', title: t('import'), onclick: () => exec('file.import') }, ic('import')),
     h('span', { class: 'grow small dim' }, `${p.comps.length} ${t('comps')} · ${p.footage.length} ${t('footageN')}`),
-    h('button', { class: 'icon', title: t('delete'), onclick: () => deleteProjectItem(S.projSel, el) }, ic('trash')));
+    hiddenN ? h('button', { class: 'ghost small' + (projShowHidden ? ' on' : ''), title: t('showHiddenTip'), onclick: () => { projShowHidden = !projShowHidden; renderProject(el); } }, '🙈 ' + t('hiddenN', { n: hiddenN })) : null,
+    h('button', { class: 'icon', title: t('delete'), onclick: () => deleteProjectItems(picked(), el) }, ic('trash')));
   el.append(info, search, list, foot);
+}
+// 觸控長按＝右鍵
+export function longPress(el, fn, ms = 550) {
+  let tm = null, sx = 0, sy = 0;
+  el.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch') return; sx = e.clientX; sy = e.clientY; tm = setTimeout(() => { tm = null; fn(sx, sy); }, ms); });
+  const stop = () => { if (tm) { clearTimeout(tm); tm = null; } };
+  el.addEventListener('pointermove', e => { if (tm && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) stop(); });
+  el.addEventListener('pointerup', stop); el.addEventListener('pointercancel', stop);
+}
+function setHidden(items, v, el) {
+  edit('hide', () => { for (const x of items) { const o = x.c || x.f; if (v) o.hidden = true; else delete o.hidden; } });
+  if (v) for (const x of items) projPick.delete((x.c || x.f).id);
+  renderProject(el);
+  toast(t(v ? 'hiddenDone' : 'unhiddenDone', { n: items.length }));
 }
 function projectItemMenu(x, y, it, el) {
   const o = it.c || it.f;
@@ -87,7 +134,20 @@ function projectItemMenu(x, y, it, el) {
     it.f && Media.isMissing(it.f) ? { label: t('relink'), run: () => relink(it.f, el) } : null,
     { label: t('rename'), run: async () => { const n = await promptBox(t('rename'), o.name); if (n) edit('rename', () => { o.name = n; }); renderProject(el); } },
     '-',
-    { label: t('delete'), run: () => deleteProjectItem(o.id, el) },
+    o.hidden ? { label: t('unhide'), run: () => setHidden([it], false, el) } : { label: t('hide'), run: () => setHidden([it], true, el) },
+    { label: t('delete'), key: 'Delete', run: () => deleteProjectItems([it], el) },
+  ], x, y);
+}
+function projectMultiMenu(x, y, items, el) {
+  const n = items.length, comps = items.filter(i => i.c), anyHidden = items.some(i => (i.c || i.f).hidden);
+  dropdown([
+    { label: t('pickedN', { n }), disabled: true },
+    '-',
+    comps.length ? { label: t('addToRQN', { n: comps.length }), run: () => { edit('rq', () => { for (const i of comps) S.project.renderQueue.push({ id: uid('r'), compId: i.c.id, on: true, format: 'mp4', res: 1, quality: 'high', range: 'work', status: 'queued' }); }); bus.emit('showPanel', 'render'); } } : null,
+    { label: t('hideN', { n }), run: () => setHidden(items, true, el) },
+    anyHidden ? { label: t('unhideN', { n }), run: () => setHidden(items, false, el) } : null,
+    '-',
+    { label: t('deleteN', { n }), key: 'Delete', run: () => deleteProjectItems(items, el) },
   ], x, y);
 }
 async function relink(f, el) {
@@ -98,19 +158,27 @@ async function relink(f, el) {
   await Media.attachBlob(f, file);
   changed('relink'); renderProject(el);
 }
-async function deleteProjectItem(id, el) {
-  if (!id) return;
+// 一次刪除多個項目（只問一次；有被合成用到的會一併提醒）
+async function deleteProjectItems(items, el) {
+  if (!items.length) return;
   const p = S.project;
-  const c = M.getComp(p, id), f = M.getFootage(p, id);
-  const used = p.comps.some(cc => cc.layers.some(l => l.source === id || l.comp === id));
-  if (used && !await confirmBox(t('itemInUse'))) return;
+  const ids = new Set(items.map(x => (x.c || x.f).id));
+  const used = p.comps.some(cc => !ids.has(cc.id) && cc.layers.some(l => ids.has(l.source) || ids.has(l.comp)));
+  const msg = (items.length > 1 ? t('deleteNQ', { n: items.length }) : t('deleteOneQ', { name: (items[0].c || items[0].f).name })) + (used ? '\n' + t('itemInUse') : '');
+  if (!await confirmBox(msg, t('delete'))) return;
   edit('deleteItem', () => {
-    if (c) { p.comps = p.comps.filter(x => x !== c); for (const cc of p.comps) cc.layers = cc.layers.filter(l => l.comp !== id); S.openComps = S.openComps.filter(x => x !== id); if (S.compId === id) S.compId = p.comps[0]?.id || null; p.renderQueue = p.renderQueue.filter(r => r.compId !== id); }
-    if (f) { p.footage = p.footage.filter(x => x !== f); for (const cc of p.comps) cc.layers = cc.layers.filter(l => l.source !== id); Media.forget(id); }
+    p.comps = p.comps.filter(x => !ids.has(x.id));
+    p.footage = p.footage.filter(x => !ids.has(x.id));
+    for (const cc of p.comps) cc.layers = cc.layers.filter(l => !ids.has(l.comp) && !ids.has(l.source));
+    S.openComps = S.openComps.filter(x => !ids.has(x));
+    if (ids.has(S.compId)) S.compId = p.comps[0]?.id || null;
+    p.renderQueue = p.renderQueue.filter(r => !ids.has(r.compId));
   });
+  for (const id of ids) { Media.forget(id); projPick.delete(id); }
   S.projSel = null;
   bus.emit('comp');
   renderProject(el);
+  toast(t('deletedN', { n: items.length }));
 }
 
 // ================= 效果控制 =================
