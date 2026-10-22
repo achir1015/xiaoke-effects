@@ -44,6 +44,7 @@ function menus() {
       '-',
       { label: t('modMenu') + '…', run: () => exec('module.decompose') },
       { label: t('modSaveComp'), disabled: !c, run: () => exec('module.saveComp') },
+      { label: t('aepMenu') + '…', run: () => exec('module.importAep') },
       { label: t('addToRQ'), key: K('Ctrl+Shift+/'), disabled: !c, run: () => exec('comp.addToRQ') },
       '-',
       { label: t('openEngine'), run: openEngine },

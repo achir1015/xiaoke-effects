@@ -5,3 +5,4 @@ qtpy>=2.4 ; sys_platform == "darwin"
 pyinstaller>=6.10,<7
 pillow>=10.4
 imageio-ffmpeg>=0.5.1 ; sys_platform == "darwin"
+py-aep==0.18.2

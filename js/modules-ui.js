@@ -208,7 +208,8 @@ export async function renderModuleLib(grid) {
   const picked = () => mods.filter(m => modPick.has(m.id));
   const bar = h('div', { style: { gridColumn: '1/-1', display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' } },
     h('button', { class: 'primary', onclick: () => decomposeFlow() }, '✂ ' + t('modMenu')),
-    h('button', { onclick: () => saveCompAsModule() }, '＋ ' + t('modSaveComp')));
+    h('button', { onclick: () => saveCompAsModule() }, '＋ ' + t('modSaveComp')),
+    h('button', { title: t('aepMenu'), onclick: () => importAepFlow() }, 'Ae ' + t('aepShort')));
   if (mods.length) bar.append(h('button', { class: modSelMode ? 'on' : '', title: t('modSelTip'), onclick: () => { modSelMode = !modSelMode; if (!modSelMode) modPick.clear(); again(); } }, '☑ ' + (modSelMode ? t('modSelDone') : t('modSelect'))));
   if (hiddenN) bar.append(h('button', { class: modShowHidden ? 'on' : '', title: t('showHiddenTip'), onclick: () => { modShowHidden = !modShowHidden; again(); } }, '🙈 ' + t('hiddenN', { n: hiddenN })));
   if (modPick.size) bar.append(h('span', { class: 'small' }, t('pickedN', { n: modPick.size })),
@@ -282,4 +283,78 @@ export async function useModule(m) {
     changed('module');
     toast(t('modInserted', { name: mc.name }));
   } else { changed('module'); openComp(mc.id); }
+}
+
+// ---------------- 匯入 After Effects 專案 → 我的模組 ----------------
+// 桌面版（Windows／Mac）由 Python 轉換 .aep；轉好的成品主合成與各場景直接存成模組
+const RELEASES = 'https://github.com/achir1015/xiaoke-effects/releases/latest';
+export async function importAepFlow(test) {
+  const api = test || window.pywebview?.api;
+  if (!api?.import_aep) {
+    const r = await modal(t('aepMenu'), h('p', null, t('aepDesktopOnly')), [{ label: t('cancel'), value: null }, { label: t('aepDownload'), primary: true, value: 'dl' }]);
+    if (r === 'dl') window.open(RELEASES, '_blank');
+    return;
+  }
+  let cancelled = false, timer = null, pb = null;
+  const startProgress = () => {
+    pb = progressBox(t('aepMenu'), () => { cancelled = true; });
+    pb.set(0, t('aepParsing'));
+    timer = setInterval(async () => {
+      try { const s = await api.aep_status(); if (s?.total) pb.set(s.done / s.total * 0.8, t('aepConverting', { done: s.done, total: s.total })); } catch { }
+    }, 500);
+  };
+  const stop = () => { clearInterval(timer); timer = null; pb?.close(); pb = null; };
+  let r;
+  try {
+    // 選檔對話框先出來，選好了才顯示進度
+    const first = api.import_aep('', '');
+    setTimeout(() => { if (!r && !pb) startProgress(); }, 1200);
+    r = await first;
+    if (r?.status === 'ok' && r.report.missing.length && !cancelled) {
+      stop();
+      const names = r.report.missing.slice(0, 8).join('、') + (r.report.missing.length > 8 ? '…' : '');
+      const ask = await modal(t('aepMenu'), h('p', { style: { whiteSpace: 'pre-wrap' } }, t('aepMissingQ', { n: r.report.missing.length, names })),
+        [{ label: t('aepSkipMissing'), value: 'skip' }, { label: t('aepPickFolder'), primary: true, value: 'folder' }]);
+      if (ask === null) return;
+      if (ask === 'folder') {
+        const again = api.import_aep(r.path, 'ask');
+        r = null;
+        setTimeout(() => { if (!r && !pb) startProgress(); }, 1200);
+        r = await again;
+      }
+    }
+  } finally { if (r?.status !== 'ok' || cancelled) stop(); }
+  if (cancelled || !r || r.status === 'declined') { stop(); return; }
+  if (r.status !== 'ok') { stop(); toast(t('aepFail', { msg: r.message || '' }), 'warn', 8000); return; }
+  if (!pb) startProgress();
+  clearInterval(timer);
+  try {
+    const p = M.migrate(await (await fetch(r.url, { cache: 'no-store' })).json());
+    // 素材：放進素材庫並解碼（模組存檔與縮圖都要用）
+    for (const f of p.footage) {
+      if (!f.data) continue;
+      const b = await (await fetch(f.data)).blob(); delete f.data;
+      await M.Store.putBlob(f.blobKey, b); await Media.attachBlob(f, b);
+    }
+    const ids = (r.report.modules || []).filter(id => M.getComp(p, id));
+    if (!ids.length) { stop(); toast(t('aepNoComp'), 'warn'); return; }
+    const base = Mod.baseName(String(r.report.name || 'AE').replace(/\s*[（(](已转换|已轉換|converted)[)）]\s*/gi, ''));
+    for (let i = 0; i < ids.length; i++) {
+      if (cancelled) break;
+      const c = M.getComp(p, ids[i]);
+      pb.set(0.8 + 0.2 * i / ids.length, t('aepSaving', { i: i + 1, n: ids.length, name: c.name }));
+      c.name = `${Mod.moduleName(base, i)}（${c.name}）`;
+      let thumb = '';
+      try {
+        const png = await renderStill(p, c, c.duration * 0.6, Math.min(1, 240 / c.w));
+        thumb = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(png); });
+      } catch (e) { console.warn('thumb', e); }
+      await Mod.saveModule(p, c, thumb);
+    }
+    stop();
+    bus.emit('libTab', 'modules');
+    toast(t('aepDone', { n: ids.length }), '', 5000);
+    const sk = Object.keys(r.report.skipped || {}), un = r.report.unsupported || [];
+    if (sk.length || un.length) toast(t('aepPartial', { list: [...sk.map(x => x.replace(/^ADBE /, '')), ...un].join('、') }), 'warn', 9000);
+  } catch (e) { console.warn(e); stop(); toast(t('aepFail', { msg: e.message || '' }), 'warn', 8000); }
 }

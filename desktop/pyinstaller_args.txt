@@ -3,3 +3,5 @@
 --windowed
 --name
 XiaokeEffects
+--collect-all
+py_aep

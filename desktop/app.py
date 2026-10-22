@@ -263,6 +263,7 @@ class DesktopBridge:
         self._window = None
         self._server = server
         self._sessions = {}
+        self._aep = {"busy": False, "done": 0, "total": 0, "stage": ""}
         self._updater = Updater()
         self.forced_save_dir = None
 
@@ -325,6 +326,55 @@ class DesktopBridge:
             return {"status": "ok", "token": token, "path": str(path)}
         except Exception as e:
             return {"status": "error", "message": str(e)}
+
+    # ---- 匯入 After Effects 專案（轉成 .xke，網頁端再存成「我的模組」）----
+    def aep_status(self):
+        return dict(self._aep)
+
+    def import_aep(self, path: str = "", folder: str = ""):
+        """path 空白＝跳出選檔；folder＝'ask' 時跳出選資料夾（素材找不到時用）"""
+        try:
+            import webview
+            path = str(path or "")
+            if not path:
+                result = self._window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=False,
+                                                         file_types=("After Effects project (*.aep)", "All files (*.*)"))
+                if not result:
+                    return {"status": "declined"}
+                path = result if isinstance(result, str) else result[0]
+            photos = None
+            if folder == "ask":
+                r = self._window.create_file_dialog(webview.FOLDER_DIALOG, directory=str(Path(path).parent))
+                if not r:
+                    return {"status": "declined"}
+                photos = r if isinstance(r, str) else r[0]
+            elif folder:
+                photos = str(folder)
+            if not Path(path).is_file():
+                return {"status": "error", "message": "file not found: " + path}
+            import aep2xke
+            out_dir = AppInfo.data_dir() / "aep"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            for old in out_dir.glob("*.xke"):     # 上一次的轉換結果網頁端已經讀走了
+                try:
+                    old.unlink()
+                except OSError:
+                    pass
+            out = out_dir / (uuid.uuid4().hex + ".xke")
+            self._aep = {"busy": True, "done": 0, "total": 0, "stage": "parse"}
+
+            def prog(done, total):
+                self._aep = {"busy": True, "done": done, "total": total, "stage": "convert"}
+            fx_js = AppInfo.web_dir() / "js" / "fx.js"
+            report = aep2xke.convert(path, str(out), photos, 1600, str(fx_js) if fx_js.is_file() else None, prog)
+            token = uuid.uuid4().hex
+            LocalServer.files[token] = str(out)
+            return {"status": "ok", "url": f"/__xke_file/{token}", "path": path, "report": report}
+        except Exception as e:
+            traceback.print_exc()
+            return {"status": "error", "message": f"{type(e).__name__}: {e}"}
+        finally:
+            self._aep = {"busy": False, "done": 0, "total": 0, "stage": ""}
 
     # ---- 共用動畫素材（給小柯影音剪輯助手）----
     def shared_begin(self, filename: str, meta_json: str):
@@ -544,8 +594,13 @@ class SelfTest:
             mp4 = Path((files.get("mp4") or {}).get("path") or "")
             report["mp4_h264"] = mp4.is_file() and b"avc1" in mp4.read_bytes()[:200000]
             report["update_check"] = self.bridge.check_update()
+            try:   # AE 專案轉換器（py_aep）有沒有一起打包進來
+                import aep2xke
+                report["aep_converter"] = {"ok": True, "py_aep": getattr(aep2xke.py_aep, "__version__", "?"), "fx_js": (AppInfo.web_dir() / "js" / "fx.js").is_file()}
+            except Exception as e:
+                report["aep_converter"] = {"ok": False, "error": f"{type(e).__name__}: {e}"}
             self.screenshot("selftest.png")
-            report["ok"] = bool(report["web"].get("ok") and report["files_ok"] and all(report["files_ok"].values()))
+            report["ok"] = bool(report["web"].get("ok") and report["files_ok"] and all(report["files_ok"].values()) and report["aep_converter"]["ok"])
         except Exception:
             report["error"] = traceback.format_exc()
         finally:

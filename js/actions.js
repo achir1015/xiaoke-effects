@@ -55,6 +55,7 @@ export async function importFiles(files, addToComp = false) {
   const added = [];
   for (const f of files) {
     if (f.name.toLowerCase().endsWith(M.FILE_EXT)) { await openProjectFile(f); return; }
+    if (f.name.toLowerCase().endsWith('.aep')) { await (await import('./modules-ui.js')).importAepFlow(); return; }   // 拖進來的 AE 專案：用選檔對話框取得路徑再轉換
     try {
       const ft = await Media.importFile(f);
       edit('import', () => { S.project.footage.push(ft); });
@@ -443,6 +444,7 @@ cmd('anim.addTextAnimator', (prop = 'opacity') => forSel('animator', l => {
 // ---- 模組自製 ----
 cmd('module.decompose', async () => (await import('./modules-ui.js')).decomposeFlow());
 cmd('module.saveComp', async () => (await import('./modules-ui.js')).saveCompAsModule());
+cmd('module.importAep', async () => (await import('./modules-ui.js')).importAepFlow());
 cmd('module.replacePhoto', async () => (await import('./modules-ui.js')).replacePhotoFlow());
 cmd('module.swapPhoto', async layer => (await import('./modules-ui.js')).swapPhotoFlow(layer));
 

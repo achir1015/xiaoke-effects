@@ -1,5 +1,6 @@
 # After Effects 專案（.aep）→ 小柯特效專案（.xke）轉換器
-# 用法：python tools/aep2xke.py 專案.aep [輸出.xke] [--photos 素材資料夾] [--max 1600]
+# 用法：python desktop/aep2xke.py 專案.aep [輸出.xke] [--photos 素材資料夾] [--max 1600]
+#       桌面版 App 的「檔案 ▸ 匯入 After Effects 專案」也是呼叫這裡的 convert()
 # 需要：pip install py-aep pillow
 # 轉換內容：合成、巢狀合成、純色／空物件／調整圖層、圖片素材（內嵌，自動縮小）、文字、攝影機、燈光、
 #           變形（含方向 Orientation、分離 XYZ 位置）、關鍵影格（線性／貝茲緩動／保持）、表達式、遮罩、
@@ -156,6 +157,7 @@ EFX = {
     'ADBE Brightness & Contrast 2': ('brightnessContrast', {1: ('brightness', None), 2: ('contrast', None)}, {}),
 }
 SKIPPED = {}
+VIDEO_EXT = {'.mp4', '.mov', '.avi', '.mxf', '.m4v', '.wmv', '.flv', '.mkv', '.wav', '.mp3', '.aif', '.aiff', '.m4a'}
 
 def color4(v):
     if isinstance(v, list) and len(v) == 3: return v + [1]
@@ -358,6 +360,7 @@ class Conv:
     def __init__(self, app, photos=None, maxpx=1600, tool_params=None):
         self.app = app; self.photos = photos; self.maxpx = maxpx; self.tp = tool_params or {}
         self.comp_ids = {}; self.foot = {}; self.footage = []; self.lab = 0; self.missing = []
+        self.index = {}; self.unsupported = []; self.progress = None; self.done = 0; self.total = 1
 
     def label(self):
         self.lab += 1
@@ -366,13 +369,22 @@ class Conv:
     def footage_for(self, item):
         if item.id in self.foot: return self.foot[item.id]
         ms = g(item, 'main_source'); path = str(g(ms, 'file') or '')
-        cands = [path]
-        if self.photos: cands += [os.path.join(self.photos, os.path.basename(path.replace('\\', '/')))]
+        base = os.path.basename(path.replace('\\', '/'))
+        # 原本的路徑找不到時，用檔名在 .aep 所在資料夾（含子資料夾）與使用者指定的資料夾裡找
+        cands = [path, self.index.get(base.lower())]
+        if self.photos: cands.append(os.path.join(self.photos, base))
         real = next((c for c in cands if c and os.path.isfile(c)), None)
         rec = None
+        if real and os.path.splitext(real)[1].lower() in VIDEO_EXT:
+            self.unsupported.append(base); real = None
+        im = None
         if real:
             from PIL import Image
-            im = Image.open(real); im.load()
+            try:
+                im = Image.open(real); im.load()
+            except Exception:
+                self.unsupported.append(base); im = None
+        if im is not None:
             w0, h0 = im.size
             k = min(1.0, self.maxpx / max(w0, h0))
             if k < 1: im = im.resize((max(1, round(w0 * k)), max(1, round(h0 * k))), Image.LANCZOS)
@@ -385,7 +397,7 @@ class Conv:
             rec = {'id': uid('f'), 'name': item.name, 'kind': 'image', 'blobKey': uid('b'), 'size': len(data), 'type': mime, 'w': im.size[0], 'h': im.size[1],
                    'data': 'data:' + mime + ';base64,' + base64.b64encode(data).decode(), '_k': im.size[0] / w0}
             self.footage.append(rec)
-        else:
+        elif base not in self.unsupported:
             self.missing.append(path)
         self.foot[item.id] = rec
         return rec
@@ -398,6 +410,8 @@ class Conv:
                'bg': color4(bg), 'layers': [], 'workIn': round(float(g(c, 'work_area_start') or 0), 4), 'workOut': round(float(g(c, 'work_area_start') or 0) + float(g(c, 'work_area_duration') or c.duration), 4),
                'markers': [], 'motionBlur': False, 'shutter': 180, 'samples': 8, 'folder': None}
         self.comps.append(out)
+        self.done += 1
+        if self.progress: self.progress(self.done, self.total)
         ids = {}
         layers = list(c.layers)
         for l in layers: ids[l.index] = uid('l')
@@ -511,7 +525,9 @@ class Conv:
 
     def run(self):
         self.comps = []
-        for c in self.app.project.compositions: self.comp(c)
+        comps = list(self.app.project.compositions)
+        self.total = len(comps)
+        for c in comps: self.comp(c)
         # 表達式：效果名稱與參數名稱換成工具的 id
         names = {}
         for c in self.comps:
@@ -536,10 +552,10 @@ class Conv:
         return {'format': 'xiaoke-effects', 'version': 1, 'name': os.path.splitext(os.path.basename(self.app.project.file or 'AE'))[0] if isinstance(g(self.app.project, 'file'), str) else 'AE',
                 'comps': self.comps, 'footage': self.footage, 'folders': [], 'activeComp': main['id'], 'renderQueue': []}
 
-def tool_param_types(root):
+def tool_param_types(fx_js):
     # 讀工具的 fx.js，取得每個效果參數的型別（color/bool/…）
     import re
-    src = open(os.path.join(root, 'js', 'fx.js'), encoding='utf8').read()
+    src = open(fx_js, encoding='utf8').read()
     out = {}
     for m in re.finditer(r"^E\('(\w+)', '\w+', \[(.*?)\],", src, re.M | re.S):
         tid, body = m.group(1), m.group(2)
@@ -548,35 +564,76 @@ def tool_param_types(root):
             out[tid][pm.group(2)] = {'col': 'color', 'bool': 'bool', 'pt': 'point', 'sel': 'select'}.get(pm.group(1), 'number')
     return out
 
+def file_index(dirs):
+    # 素材資料夾：連同子資料夾一起找（檔名不分大小寫）
+    index = {}
+    for d in dirs:
+        if not d or not os.path.isdir(d): continue
+        for root, sub, files in os.walk(d):
+            sub[:] = [x for x in sub if not x.startswith('.')]
+            for f in files: index.setdefault(f.lower(), os.path.join(root, f))
+    return index
+
+def module_comps(proj):
+    """適合做成動畫模組的合成：成品主合成（拆掉只包一層的輸出尺寸外殼），以及它用到、和它一樣大的場景合成"""
+    used = {l['comp'] for c in proj['comps'] for l in c['layers'] if l.get('type') == 'precomp'}
+    byid = {c['id']: c for c in proj['comps']}
+    mains = []
+    for c in proj['comps']:
+        if c['id'] in used: continue
+        seen = set()
+        while len(c['layers']) == 1 and c['layers'][0].get('type') == 'precomp' and c['layers'][0].get('comp') in byid and c['id'] not in seen:
+            seen.add(c['id']); c = byid[c['layers'][0]['comp']]
+        if len(c['layers']) >= 2 and c not in mains: mains.append(c)
+    out = []
+    for m in sorted(mains, key=lambda c: -c['duration']):
+        out.append(m['id'])
+        for l in sorted(m['layers'], key=lambda l: l.get('start', 0)):
+            k = byid.get(l.get('comp')) if l.get('type') == 'precomp' else None
+            if k and k['w'] == m['w'] and k['h'] == m['h'] and k['duration'] >= 1 and k['id'] not in out:
+                out.append(k['id'])
+    return out
+
+def convert(aep, out=None, photos=None, maxpx=1600, fx_js=None, progress=None):
+    """轉換一個 .aep；回傳報告 {out, name, comps, footage, size, missing, unsupported, skipped, modules}"""
+    SKIPPED.clear()
+    aep = os.path.abspath(aep)
+    out = out or os.path.splitext(aep)[0] + '.xke'
+    here = os.path.dirname(os.path.abspath(__file__))
+    fx_js = fx_js or next((p for p in (os.path.join(here, '..', 'js', 'fx.js'), os.path.join(here, 'web', 'js', 'fx.js')) if os.path.isfile(p)), None)
+    folder = os.path.dirname(aep)
+    index = file_index([photos, folder])
+    app = py_aep.parse(aep)
+    def run(idx):
+        cv = Conv(app, photos, maxpx, tool_param_types(fx_js) if fx_js else {})
+        cv.index = idx; cv.progress = progress
+        return cv, cv.run()
+    cv, proj = run(index)
+    if cv.missing and not photos:
+        # 素材常放在專案資料夾的上一層：用上一層再找一次
+        more = file_index([os.path.dirname(folder)])
+        miss = {os.path.basename(m.replace('\\', '/')).lower() for m in cv.missing}
+        if any(k in more for k in miss):
+            SKIPPED.clear()
+            cv, proj = run({**more, **index})
+    proj['name'] = os.path.splitext(os.path.basename(aep))[0]
+    with open(out, 'w', encoding='utf8') as f:
+        json.dump(proj, f, ensure_ascii=False, separators=(',', ':'))
+    return {'out': out, 'name': proj['name'], 'comps': len(proj['comps']), 'footage': len(proj['footage']), 'size': os.path.getsize(out),
+            'missing': sorted({os.path.basename(m.replace('\\', '/')) for m in cv.missing}), 'unsupported': sorted(set(cv.unsupported)),
+            'skipped': dict(SKIPPED), 'modules': module_comps(proj)}
+
 def main():
     ap = argparse.ArgumentParser(description='After Effects .aep → 小柯特效 .xke')
     ap.add_argument('aep'); ap.add_argument('out', nargs='?')
     ap.add_argument('--photos', help='素材資料夾（原始路徑找不到時，用檔名在這裡找）')
     ap.add_argument('--max', type=int, default=1600, help='圖片最長邊（像素），預設 1600')
     a = ap.parse_args()
-    out = a.out or os.path.splitext(a.aep)[0] + '.xke'
-    photos = a.photos or os.path.dirname(os.path.abspath(a.aep))
-    # 素材資料夾：連同子資料夾一起找
-    index = {}
-    for root, _, files in os.walk(photos):
-        for f in files: index.setdefault(f.lower(), os.path.join(root, f))
-    app = py_aep.parse(a.aep)
-    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    cv = Conv(app, None, a.max, tool_param_types(here))
-    orig = cv.footage_for
-    def ff(item):
-        ms = g(item, 'main_source'); p = str(g(ms, 'file') or '')
-        if p and not os.path.isfile(p):
-            alt = index.get(os.path.basename(p.replace('\\', '/')).lower())
-            if alt: ms_file = alt; cv.photos = os.path.dirname(alt)
-        return orig(item)
-    cv.footage_for = ff
-    proj = cv.run()
-    proj['name'] = os.path.splitext(os.path.basename(a.aep))[0]
-    json.dump(proj, open(out, 'w', encoding='utf8'), ensure_ascii=False, separators=(',', ':'))
-    print(f'完成：{out}  合成 {len(proj["comps"])} 個、素材 {len(proj["footage"])} 個、{os.path.getsize(out) / 1e6:.1f} MB')
-    if cv.missing: print('找不到的素材：', *sorted(set(cv.missing)), sep='\n  ')
-    if SKIPPED: print('略過（工具沒有對應）的效果：', ', '.join(f'{k}×{v}' for k, v in SKIPPED.items()))
+    r = convert(a.aep, a.out, a.photos, a.max)
+    print(f"完成：{r['out']}  合成 {r['comps']} 個、素材 {r['footage']} 個、{r['size'] / 1e6:.1f} MB、可做成模組 {len(r['modules'])} 個")
+    if r['missing']: print('找不到的素材：', *r['missing'], sep='\n  ')
+    if r['unsupported']: print('還不支援的素材（影片／音訊等）：', *r['unsupported'], sep='\n  ')
+    if r['skipped']: print('略過（工具沒有對應）的效果：', ', '.join(f'{k}×{v}' for k, v in r['skipped'].items()))
 
 if __name__ == '__main__':
     main()
