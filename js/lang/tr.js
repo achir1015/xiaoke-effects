@@ -201,4 +201,6 @@ export default {
   aepNoComp: "Bu AE projesinde modüle dönüştürülebilecek kompozisyon yok",
   aepDone: "{n} animasyon modülü Modüllerim’e aktarıldı",
   aepPartial: "Bazı kısımlar henüz desteklenmediği için atlandı: {list}",
+  aepTooOld: "Bu AE projesi okunamayacak kadar eski bir sürümden. After Effects’te açıp Dosya ▸ Farklı Kaydet ile kaydedin, sonra o kopyayı içe aktarın.",
+  aepLoadingMedia: "Medya yükleniyor: {name}",
 };

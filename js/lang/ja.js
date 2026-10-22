@@ -201,4 +201,6 @@ export default {
   aepNoComp: "この AE プロジェクトにはモジュールにできるコンポジションがありません",
   aepDone: "{n} 個のアニメーションモジュールを「マイモジュール」に読み込みました",
   aepPartial: "未対応の内容を一部スキップしました：{list}",
+  aepTooOld: "この AE プロジェクトは古すぎて読み込めません。After Effects で開いて「ファイル ▸ 別名で保存」で保存し、その保存したファイルを読み込んでください。",
+  aepLoadingMedia: "メディアを読み込み中：{name}",
 };

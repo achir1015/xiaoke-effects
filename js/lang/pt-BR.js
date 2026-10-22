@@ -201,4 +201,6 @@ export default {
   aepNoComp: "Este projeto AE não tem composições que possam virar módulos",
   aepDone: "{n} módulos de animação importados em Meus módulos",
   aepPartial: "Algumas partes ainda não são suportadas e foram ignoradas: {list}",
+  aepTooOld: "Este projeto AE é de uma versão antiga demais. Abra no After Effects, use Arquivo ▸ Salvar como e importe a cópia salva.",
+  aepLoadingMedia: "Carregando mídia: {name}",
 };

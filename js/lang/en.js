@@ -201,4 +201,6 @@ export default {
   aepNoComp: "No composition in this AE project can be made into a module",
   aepDone: "Imported {n} animation modules into My Modules",
   aepPartial: "Some parts aren’t supported yet and were skipped: {list}",
+  aepTooOld: "This AE project is from a version too old to read. Open it in After Effects, use File ▸ Save As to save a copy, then import that copy.",
+  aepLoadingMedia: "Loading media: {name}",
 };

@@ -201,4 +201,6 @@ export default {
   aepNoComp: "Ce projet AE ne contient aucune composition utilisable comme module",
   aepDone: "{n} modules d’animation importés dans Mes modules",
   aepPartial: "Certains éléments ne sont pas encore pris en charge et ont été ignorés : {list}",
+  aepTooOld: "Ce projet AE provient d’une version trop ancienne. Ouvrez-le dans After Effects, faites Fichier ▸ Enregistrer sous, puis importez cette copie.",
+  aepLoadingMedia: "Chargement du média : {name}",
 };

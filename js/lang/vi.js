@@ -201,4 +201,6 @@ export default {
   aepNoComp: "Dự án AE này không có bố cục nào dùng làm mô-đun được",
   aepDone: "Đã nhập {n} mô-đun hoạt ảnh vào Mô-đun của tôi",
   aepPartial: "Một số phần chưa được hỗ trợ nên đã bỏ qua: {list}",
+  aepTooOld: "Dự án AE này thuộc phiên bản quá cũ. Hãy mở trong After Effects, chọn Tệp ▸ Lưu thành để lưu bản sao rồi nhập bản đó.",
+  aepLoadingMedia: "Đang tải tư liệu: {name}",
 };

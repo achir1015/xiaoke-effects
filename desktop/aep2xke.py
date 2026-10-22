@@ -9,6 +9,99 @@
 import sys, os, io, json, math, base64, random, string, argparse
 import py_aep
 
+def _lenient_strings():
+    # 舊版 AE（CS5.5 以前）專案裡的文字不一定是 UTF-8（例如 ™ 是 0x99）：解不開時改用 Windows 西歐編碼，不讓整個轉換失敗
+    try:
+        from py_aep.binary import scalar_chunks as sc
+    except Exception:
+        return
+    base = sc._StringChunkBase
+    if getattr(base, '_xke_lenient', False): return
+
+    def read(cls, fp, size, *, chunk_type='', **kwargs):
+        raw = sc.read_bytes(fp, size)
+        try:
+            v = raw.decode(cls._ENCODING)
+        except UnicodeDecodeError:
+            v = raw.decode('cp1252', 'replace')
+        return cls(chunk_type=chunk_type, value=v)
+    base.read = classmethod(read)
+    base._xke_lenient = True
+    # 舊版的素材設定區塊（opti）比較短：讀不懂就保留原始資料（純色顏色會用預設值）
+    try:
+        from py_aep.binary import footage_chunks as fc
+        from py_aep.binary.bin_utils import read_bytes
+        opti = fc.OptiChunk.read.__func__
+
+        def read_opti(cls, fp, size, *, chunk_type='', **kwargs):
+            pos = fp.tell()
+            try:
+                return opti(cls, fp, size, chunk_type=chunk_type, **kwargs)
+            except OSError:
+                fp.seek(pos)
+                return fc.OptiChunk(chunk_type=chunk_type, data=read_bytes(fp, size))
+        fc.OptiChunk.read = classmethod(read_opti)
+    except Exception:
+        pass
+    # CS4 以前的專案：項目／圖層名稱放在 idta／ldta 的固定欄位裡，沒有 Utf8 區塊
+    try:
+        from py_aep.parsers import item as pi, layer as pl
+        from py_aep.binary.scalar_chunks import Utf8Chunk
+
+        def name_from(chunks):
+            for c in chunks:
+                if c.chunk_type == 'idta':
+                    raw = getattr(c, '_reserved_18', b'') or b''
+                    return raw.split(b'\x00')[0].decode('utf-8', 'replace')
+                if c.chunk_type == 'ldta':
+                    return str(getattr(c, 'layer_name', '') or '')
+            return ''
+
+        def lenient_find(mod):
+            find0 = mod.find_by_type
+
+            def find_by_type(chunks, chunk_type):
+                try:
+                    return find0(chunks=chunks, chunk_type=chunk_type)
+                except Exception:
+                    if chunk_type == 'Utf8':
+                        return Utf8Chunk(chunk_type='Utf8', value=name_from(chunks))
+                    raise
+            mod.find_by_type = find_by_type
+        lenient_find(pi); lenient_find(pl)
+    except Exception:
+        pass
+    # 舊版的算圖佇列格式不同：讀不懂就當成空的（轉換用不到）
+    try:
+        from py_aep.parsers import project as pp2
+        rq = pp2.parse_render_queue
+
+        def parse_render_queue(root_chunks, project):
+            try:
+                return rq(root_chunks, project)
+            except Exception:
+                return rq([c for c in root_chunks if getattr(c, 'list_type', None) != 'LRdr'], project)
+        pp2.parse_render_queue = parse_render_queue
+    except Exception:
+        pass
+    # 舊版沒有的專案設定區塊：補預設值
+    try:
+        from py_aep.parsers import project as pp
+        find = pp.find_by_type
+        defaults = {'acer': lambda: sc.U1Chunk(chunk_type='acer', value=1), 'adfr': lambda: sc.F8Chunk(chunk_type='adfr', value=30.0)}
+
+        def find_by_type(chunks, chunk_type):
+            try:
+                return find(chunks=chunks, chunk_type=chunk_type)
+            except Exception:
+                if chunk_type in defaults: return defaults[chunk_type]()
+                raise
+        pp.find_by_type = find_by_type
+    except Exception:
+        pass
+
+_lenient_strings()
+
 def uid(p=''):
     return p + ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(8))
 
@@ -126,7 +219,7 @@ EN_NAMES = {'ADBE Glo2': 'Glow', 'ADBE Fast Blur': 'Fast Blur', 'ADBE Gaussian B
             'ADBE Fill': 'Fill', 'ADBE Circle': 'Circle', 'ADBE Lens Flare': 'Lens Flare', 'ADBE Fractal Noise': 'Fractal Noise', 'ADBE Turbulent Displace': 'Turbulent Displace',
             'ADBE HUE SATURATION': 'Hue/Saturation', 'ADBE Tint': 'Tint', 'ADBE Easy Levels2': 'Levels', 'ADBE Drop Shadow': 'Drop Shadow', 'ADBE Slider Control': 'Slider Control',
             'ADBE Angle Control': 'Angle Control', 'ADBE Point Control': 'Point Control', 'ADBE Color Control': 'Color Control', 'ADBE Checkbox Control': 'Checkbox Control',
-            'ADBE Brightness & Contrast 2': 'Brightness & Contrast', 'ADBE Invert': 'Invert', 'ADBE Venetian Blinds': 'Venetian Blinds', 'ADBE Radial Wipe': 'Radial Wipe'}
+            'ADBE Brightness & Contrast 2': 'Brightness & Contrast', 'ADBE Corner Pin': 'Corner Pin', 'ADBE Geometry2': 'Transform', 'ADBE Exposure2': 'Exposure', 'ADBE PhotoFilterPS': 'Photo Filter', 'ADBE Tritone': 'Tritone', 'ADBE Bevel Alpha': 'Bevel Alpha', 'ADBE Invert': 'Invert', 'ADBE Venetian Blinds': 'Venetian Blinds', 'ADBE Radial Wipe': 'Radial Wipe'}
 PCT = lambda v: v * 100
 # 每個效果：工具效果 id、{AE 參數序號: (工具參數 id, 轉換)}，參數名稱（給表達式改寫用）
 EFX = {
@@ -149,6 +242,14 @@ EFX = {
     'ADBE Tint': ('tint', {1: ('mapBlackTo', None), 2: ('mapWhiteTo', None), 3: ('amountToTint', None)}, {'Amount to Tint': 'amountToTint'}),
     'ADBE Easy Levels2': ('levels', {3: ('inputBlack', lambda v: v * 255 if v <= 1 else v), 4: ('inputWhite', lambda v: v * 255 if v <= 1 else v), 5: ('gamma', None), 6: ('outputBlack', lambda v: v * 255 if v <= 1 else v), 7: ('outputWhite', lambda v: v * 255 if v <= 1 else v)}, {}),
     'ADBE Drop Shadow': ('dropShadow', {1: ('shadowColor', None), 2: ('opacity', None), 3: ('direction', lambda v: v - 45), 4: ('distance', None), 5: ('size', lambda v: v / 2), 6: ('shadowOnly', bool)}, {}),
+    'ADBE Corner Pin': ('cornerPin', {1: ('upperLeft', None), 2: ('upperRight', None), 3: ('lowerLeft', None), 4: ('lowerRight', None)},
+                        {'Upper Left': 'upperLeft', 'Upper Right': 'upperRight', 'Lower Left': 'lowerLeft', 'Lower Right': 'lowerRight'}),
+    'ADBE Geometry2': ('transform', {1: ('anchorPoint', None), 2: ('position', None), 3: ('scale', None), 5: ('skew', None), 6: ('skewAxis', None), 7: ('rotation', None), 8: ('opacity', None)},
+                       {'Anchor Point': 'anchorPoint', 'Position': 'position', 'Scale Height': 'scale', 'Rotation': 'rotation', 'Opacity': 'opacity'}),
+    'ADBE Exposure2': ('exposure', {3: ('exposure', None), 4: ('offset', None), 5: ('gammaCorrection', None)}, {'Exposure': 'exposure'}),
+    'ADBE PhotoFilterPS': ('photoFilter', {2: ('color', None), 3: ('density', None), 4: ('preserveLuminosity', bool)}, {'Density': 'density'}),
+    'ADBE Tritone': ('tritone', {1: ('highlights', None), 2: ('midtones', None), 3: ('shadows', None), 4: ('blendWithOriginal', None)}, {}),
+    'ADBE Bevel Alpha': ('bevelAlpha', {1: ('edgeThickness', None), 2: ('lightAngle', None), 3: ('lightColor', None), 4: ('lightIntensity', None)}, {}),
     'ADBE Slider Control': ('sliderControl', {1: ('slider', None)}, {'Slider': 'slider'}),
     'ADBE Angle Control': ('angleControl', {1: ('angle', None)}, {'Angle': 'angle'}),
     'ADBE Point Control': ('pointControl', {1: ('point', None)}, {'Point': 'point'}),
@@ -157,7 +258,11 @@ EFX = {
     'ADBE Brightness & Contrast 2': ('brightnessContrast', {1: ('brightness', None), 2: ('contrast', None)}, {}),
 }
 SKIPPED = {}
-VIDEO_EXT = {'.mp4', '.mov', '.avi', '.mxf', '.m4v', '.wmv', '.flv', '.mkv', '.wav', '.mp3', '.aif', '.aiff', '.m4a'}
+VIDEO_EXT = {'.mp4', '.mov', '.m4v', '.webm'}            # 瀏覽器（WebView2／Qt WebEngine）能播的 H.264／VP9 影片
+AUDIO_EXT = {'.mp3', '.wav', '.m4a', '.aac', '.ogg'}
+MEDIA_MIME = {'.mp4': 'video/mp4', '.mov': 'video/mp4', '.m4v': 'video/mp4', '.webm': 'video/webm',
+              '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.ogg': 'audio/ogg'}
+OTHER_MEDIA = {'.avi', '.mxf', '.wmv', '.flv', '.mkv', '.aif', '.aiff', '.mpg', '.mpeg'}
 
 def color4(v):
     if isinstance(v, list) and len(v) == 3: return v + [1]
@@ -360,7 +465,7 @@ class Conv:
     def __init__(self, app, photos=None, maxpx=1600, tool_params=None):
         self.app = app; self.photos = photos; self.maxpx = maxpx; self.tp = tool_params or {}
         self.comp_ids = {}; self.foot = {}; self.footage = []; self.lab = 0; self.missing = []
-        self.index = {}; self.unsupported = []; self.progress = None; self.done = 0; self.total = 1
+        self.index = {}; self.unsupported = []; self.progress = None; self.done = 0; self.total = 1; self.raw = {}; self.media = {}
 
     def label(self):
         self.lab += 1
@@ -368,15 +473,25 @@ class Conv:
 
     def footage_for(self, item):
         if item.id in self.foot: return self.foot[item.id]
-        ms = g(item, 'main_source'); path = str(g(ms, 'file') or '')
+        ms = g(item, 'main_source'); path = str(g(ms, 'file') or '') or self.raw.get(item.id, {}).get('path', '')
         base = os.path.basename(path.replace('\\', '/'))
         # 原本的路徑找不到時，用檔名在 .aep 所在資料夾（含子資料夾）與使用者指定的資料夾裡找
         cands = [path, self.index.get(base.lower())]
         if self.photos: cands.append(os.path.join(self.photos, base))
         real = next((c for c in cands if c and os.path.isfile(c)), None)
         rec = None
-        if real and os.path.splitext(real)[1].lower() in VIDEO_EXT:
+        ext = os.path.splitext(real or base)[1].lower()
+        if real and ext in OTHER_MEDIA:
             self.unsupported.append(base); real = None
+        if real and (ext in VIDEO_EXT or ext in AUDIO_EXT):
+            # 影片／音訊不內嵌（常常好幾百 MB）：記下路徑，桌面版匯入時直接從硬碟讀
+            rec = {'id': uid('f'), 'name': item.name or base, 'kind': 'audio' if ext in AUDIO_EXT else 'video', 'blobKey': uid('b'),
+                   'size': os.path.getsize(real), 'type': MEDIA_MIME.get(ext, 'video/mp4'), 'w': g(item, 'width') or 0, 'h': g(item, 'height') or 0,
+                   'duration': round(float(g(item, 'duration') or 0), 4), '_k': 1.0}
+            if ext in VIDEO_EXT and g(item, 'frame_rate'): rec['fps'] = round(float(item.frame_rate), 3)
+            self.footage.append(rec); self.media[rec['id']] = real
+            self.foot[item.id] = rec
+            return rec
         im = None
         if real:
             from PIL import Image
@@ -394,7 +509,7 @@ class Conv:
             else:
                 im.convert('RGB').save(buf, 'JPEG', quality=88); mime = 'image/jpeg'
             data = buf.getvalue()
-            rec = {'id': uid('f'), 'name': item.name, 'kind': 'image', 'blobKey': uid('b'), 'size': len(data), 'type': mime, 'w': im.size[0], 'h': im.size[1],
+            rec = {'id': uid('f'), 'name': item.name or base, 'kind': 'image', 'blobKey': uid('b'), 'size': len(data), 'type': mime, 'w': im.size[0], 'h': im.size[1],
                    'data': 'data:' + mime + ';base64,' + base64.b64encode(data).decode(), '_k': im.size[0] / w0}
             self.footage.append(rec)
         elif base not in self.unsupported:
@@ -474,14 +589,16 @@ class Conv:
                 L['type'] = 'null'
             elif g(l, 'adjustment_layer'):
                 L['type'] = 'adjust'
-            elif stype == 'SolidSource' or g(ms, 'color') is not None:
-                L['type'] = 'solid'; L['solid'] = {'w': src.width, 'h': src.height, 'color': P(color4(num(g(ms, 'color') or [1, 1, 1])))}
+            elif stype == 'SolidSource' or g(ms, 'color') is not None or 'solid' in self.raw.get(src.id, {}):
+                col = g(ms, 'color') if g(ms, 'color') is not None else self.raw.get(src.id, {}).get('solid', [1, 1, 1])
+                L['type'] = 'solid'; L['solid'] = {'w': src.width, 'h': src.height, 'color': P(color4(num(list(col))))}
             else:
                 f = self.footage_for(src)
                 if not f:
                     L['type'] = 'solid'; L['solid'] = {'w': src.width or 100, 'h': src.height or 100, 'color': P([0.5, 0.5, 0.5, 1])}; L['name'] += '（找不到素材）'
                 else:
-                    L['type'] = 'image'; L['source'] = f['id']; k = f['_k']
+                    L['type'] = f['kind']; L['source'] = f['id']; k = f['_k']
+                    if f['kind'] != 'image': L['audio'] = {'level': P(0)}
         else:
             L['type'] = 'null'
         L['transform'] = conv_transform(l, start, is3d, k)
@@ -491,6 +608,7 @@ class Conv:
         # 效果與圖層樣式
         ep = child(l, 'ADBE Effect Parade')
         stroke_items = []
+        plugin_only = 0
         for e in (ep.properties if ep else []):
             if e.match_name == 'ADBE Stroke' and L['masks']:
                 paint = None
@@ -502,6 +620,11 @@ class Conv:
                 continue
             fx = conv_effect(e, start, self.tp)
             if fx: L['effects'].append(fx)
+            elif e.match_name not in ('ADBE Effect Built In Params',): plugin_only = plugin_only + 1
+        # 純色圖層只掛了工具沒有的效果（Optical Flares、Particular 等外掛產生畫面用的）：直接畫會變成一整片色塊，先隱藏
+        if plugin_only and not L['effects'] and L['type'] in ('solid', 'adjust') and not stroke_items:
+            L['visible'] = False
+            L['name'] = (L['name'] or 'Plugin') + '（外掛效果，已隱藏）'
         if stroke_items:
             if L.get('_strokeOnly') or L['type'] == 'solid':
                 L['type'] = 'shape'; L['shapes'] = stroke_items; L.pop('solid', None); L['masks'] = []
@@ -521,6 +644,11 @@ class Conv:
         tr = child(l, 'ADBE Time Remapping')
         if tr is not None and g(l, 'time_remap_enabled'):
             L['timeRemap'] = {'on': True, 'p': conv_prop(tr, start)}
+        if not L['name']:
+            L['name'] = (g(src, 'name') or self.raw.get(src.id, {}).get('name', '') if src is not None else '') or {'camera': 'Camera', 'light': 'Light', 'text': 'Text', 'null': 'Null'}.get(L['type'], '')
+            if not L['name'] and L['type'] in ('image', 'video', 'audio'):
+                L['name'] = next((f['name'] for f in self.footage if f['id'] == L.get('source')), 'Footage')
+            L['name'] = L['name'] or L['type']
         return L
 
     def run(self):
@@ -564,6 +692,57 @@ def tool_param_types(fx_js):
             out[tid][pm.group(2)] = {'col': 'color', 'bool': 'bool', 'pt': 'point', 'sel': 'select'}.get(pm.group(1), 'number')
     return out
 
+def raw_footage(aep):
+    """直接掃描 RIFX：素材項目 id → {'path', 'solid': [r,g,b], 'name'}（舊版專案 py_aep 讀不到素材路徑與純色顏色時用）"""
+    import struct, re
+    b = open(aep, 'rb').read()
+    out = {}
+
+    def chunks(off, end):
+        while off + 8 <= end:
+            cid = b[off:off + 4]; size = struct.unpack('>I', b[off + 4:off + 8])[0]
+            yield cid, off + 8, size
+            off += 8 + size + (size & 1)
+
+    def scan(off, end, info):
+        # 收集這個項目底下的 alas／opti（遇到巢狀的 Item 就換新的項目）
+        for cid, do, size in chunks(off, end):
+            if cid == b'LIST':
+                lt = b[do:do + 4]
+                if lt == b'Item': item(do + 4, do + size)
+                elif lt != b'btdk': scan(do + 4, do + size, info)
+            elif info is not None and cid == b'alas':
+                raw = b[do:do + size]
+                m = re.search(rb'"fullpath"\s*:\s*"((?:[^"\\]|\\.)*)"', raw)
+                if m:
+                    info['path'] = json.loads(b'"' + m.group(1) + b'"')
+                else:
+                    m = re.search(rb'([A-Za-z]:\\[^\x00]+|/(?:Users|Volumes)/[^\x00]+)', raw)
+                    if m: info['path'] = m.group(1).decode('utf-8', 'replace')
+                    else:
+                        # AE 7 的舊 Mac 式路徑「:C::資料夾:Photos:檔名.jpg」：只要最後的檔名（之後用檔名找）
+                        m = re.search(rb':([^:\x00]+\.[A-Za-z0-9]{2,5})\x00', raw)
+                        if m: info['path'] = m.group(1).decode('utf-8', 'replace')
+            elif info is not None and cid == b'opti' and b[do:do + 4] == b'Soli' and size >= 26:
+                a, r, gg, bl = struct.unpack('>4f', b[do + 10:do + 26])
+                info['solid'] = [r, gg, bl]
+                nm = b[do + 26:do + min(size, 26 + 256)].split(b'\x00')[0]
+                info['name'] = nm.decode('utf-8', 'replace')
+
+    def item(off, end):
+        info, iid = {}, None
+        for cid, do, size in chunks(off, end):
+            if cid == b'idta' and size >= 20:
+                iid = struct.unpack('>I', b[do + 16:do + 20])[0]; break
+        scan(off, end, info)
+        if iid is not None and info: out[iid] = info
+
+    scan(12, len(b), None)
+    return out
+
+class TooOld(Exception):
+    """讀不懂的舊版 AE 專案"""
+
 def file_index(dirs):
     # 素材資料夾：連同子資料夾一起找（檔名不分大小寫）
     index = {}
@@ -574,25 +753,45 @@ def file_index(dirs):
             for f in files: index.setdefault(f.lower(), os.path.join(root, f))
     return index
 
-def module_comps(proj):
-    """適合做成動畫模組的合成：成品主合成（拆掉只包一層的輸出尺寸外殼），以及它用到、和它一樣大的場景合成"""
-    used = {l['comp'] for c in proj['comps'] for l in c['layers'] if l.get('type') == 'precomp'}
+def module_comps(proj, cap=24):
+    """適合做成動畫模組的合成：成品主合成（用到最多巢狀合成的那個，拆掉只包一層的輸出尺寸外殼），
+    以及它直接用到、和它一樣大、一般混合模式、有實際內容的場景合成（光暈之類的疊加層不算）"""
     byid = {c['id']: c for c in proj['comps']}
-    mains = []
-    for c in proj['comps']:
-        if c['id'] in used: continue
+    used = {l['comp'] for c in proj['comps'] for l in c['layers'] if l.get('type') == 'precomp'}
+
+    def tree(c, seen=None):
+        seen = seen if seen is not None else set()
+        for l in c['layers']:
+            k = byid.get(l.get('comp')) if l.get('type') == 'precomp' else None
+            if k and k['id'] not in seen:
+                seen.add(k['id']); tree(k, seen)
+        return seen
+
+    def unwrap(c):
         seen = set()
         while len(c['layers']) == 1 and c['layers'][0].get('type') == 'precomp' and c['layers'][0].get('comp') in byid and c['id'] not in seen:
             seen.add(c['id']); c = byid[c['layers'][0]['comp']]
-        if len(c['layers']) >= 2 and c not in mains: mains.append(c)
+        return c
+    mains = []
+    for c in proj['comps']:
+        if c['id'] in used: continue
+        m = unwrap(c)
+        if len(m['layers']) >= 2 and m not in mains: mains.append(m)
+    if not mains: return []
+    size = {m['id']: len(tree(m)) for m in mains}
+    mains.sort(key=lambda m: (-size[m['id']], -m['duration']))
+    best = mains[0]; inside = tree(best)
+    keep = [best] + [m for m in mains[1:] if size[m['id']] >= max(1, size[best['id']] * 0.5) and m['id'] not in inside][:3]
     out = []
-    for m in sorted(mains, key=lambda c: -c['duration']):
+    for m in keep:
         out.append(m['id'])
         for l in sorted(m['layers'], key=lambda l: l.get('start', 0)):
             k = byid.get(l.get('comp')) if l.get('type') == 'precomp' else None
-            if k and k['w'] == m['w'] and k['h'] == m['h'] and k['duration'] >= 1 and k['id'] not in out:
-                out.append(k['id'])
-    return out
+            if not k or k['id'] in out: continue
+            if k['w'] != m['w'] or k['h'] != m['h'] or k['duration'] < 1 or len(k['layers']) < 2: continue
+            if l.get('blend', 'normal') != 'normal' or l.get('matte', 'none') != 'none': continue
+            out.append(k['id'])
+    return out[:cap]
 
 def convert(aep, out=None, photos=None, maxpx=1600, fx_js=None, progress=None):
     """轉換一個 .aep；回傳報告 {out, name, comps, footage, size, missing, unsupported, skipped, modules}"""
@@ -603,10 +802,16 @@ def convert(aep, out=None, photos=None, maxpx=1600, fx_js=None, progress=None):
     fx_js = fx_js or next((p for p in (os.path.join(here, '..', 'js', 'fx.js'), os.path.join(here, 'web', 'js', 'fx.js')) if os.path.isfile(p)), None)
     folder = os.path.dirname(aep)
     index = file_index([photos, folder])
-    app = py_aep.parse(aep)
+    try:
+        app = py_aep.parse(aep)
+    except Exception as e:
+        # 太舊的格式（AE CS4 以前）讀不懂：請使用者先用 AE 另存新檔
+        raise TooOld(f'{type(e).__name__}: {e}') from e
     def run(idx):
         cv = Conv(app, photos, maxpx, tool_param_types(fx_js) if fx_js else {})
         cv.index = idx; cv.progress = progress
+        try: cv.raw = raw_footage(aep)
+        except Exception: cv.raw = {}
         return cv, cv.run()
     cv, proj = run(index)
     if cv.missing and not photos:
@@ -621,7 +826,7 @@ def convert(aep, out=None, photos=None, maxpx=1600, fx_js=None, progress=None):
         json.dump(proj, f, ensure_ascii=False, separators=(',', ':'))
     return {'out': out, 'name': proj['name'], 'comps': len(proj['comps']), 'footage': len(proj['footage']), 'size': os.path.getsize(out),
             'missing': sorted({os.path.basename(m.replace('\\', '/')) for m in cv.missing}), 'unsupported': sorted(set(cv.unsupported)),
-            'skipped': dict(SKIPPED), 'modules': module_comps(proj)}
+            'skipped': dict(SKIPPED), 'modules': module_comps(proj), 'media': dict(cv.media)}
 
 def main():
     ap = argparse.ArgumentParser(description='After Effects .aep → 小柯特效 .xke')

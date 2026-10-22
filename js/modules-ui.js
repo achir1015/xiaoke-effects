@@ -325,20 +325,28 @@ export async function importAepFlow(test) {
     }
   } finally { if (r?.status !== 'ok' || cancelled) stop(); }
   if (cancelled || !r || r.status === 'declined') { stop(); return; }
+  if (r.status === 'tooOld') { stop(); await modal(t('aepMenu'), h('p', null, t('aepTooOld')), [{ label: t('ok'), primary: true }]); return; }
   if (r.status !== 'ok') { stop(); toast(t('aepFail', { msg: r.message || '' }), 'warn', 8000); return; }
   if (!pb) startProgress();
   clearInterval(timer);
   try {
     const p = M.migrate(await (await fetch(r.url, { cache: 'no-store' })).json());
     // 素材：放進素材庫並解碼（模組存檔與縮圖都要用）
+    const media = r.report.media || {};
     for (const f of p.footage) {
-      if (!f.data) continue;
-      const b = await (await fetch(f.data)).blob(); delete f.data;
+      let b = null;
+      if (f.data) { b = await (await fetch(f.data)).blob(); delete f.data; }
+      else if (media[f.id]) {
+        // 影片／音訊：從硬碟讀（可能好幾百 MB）
+        pb.set(0.8, t('aepLoadingMedia', { name: f.name }));
+        b = new Blob([await (await fetch(media[f.id], { cache: 'no-store' })).blob()], { type: f.type || 'video/mp4' });
+      }
+      if (!b) continue;
       await M.Store.putBlob(f.blobKey, b); await Media.attachBlob(f, b);
     }
     const ids = (r.report.modules || []).filter(id => M.getComp(p, id));
     if (!ids.length) { stop(); toast(t('aepNoComp'), 'warn'); return; }
-    const base = Mod.baseName(String(r.report.name || 'AE').replace(/\s*[（(](已转换|已轉換|converted)[)）]\s*/gi, ''));
+    const base = Mod.baseName(String(r.report.name || 'AE').replace(/\s*[（(](已转换|已轉換|converted)[)）]\s*/gi, '') + '.aep');   // 加副檔名，名稱裡的「(CS5.5)」才不會被當成副檔名切掉
     for (let i = 0; i < ids.length; i++) {
       if (cancelled) break;
       const c = M.getComp(p, ids[i]);

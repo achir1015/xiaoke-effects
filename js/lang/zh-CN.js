@@ -201,4 +201,6 @@ export default {
   aepNoComp: "这个 AE 项目里找不到可以做成模块的合成",
   aepDone: "已导入 {n} 个动画模块到“我的模块”",
   aepPartial: "部分内容工具还不支持，已略过：{list}",
+  aepTooOld: "这个 AE 项目的版本太旧，工具读不懂。请先用 After Effects 打开，选“文件 ▸ 另存为”存一份，再导入另存的文件。",
+  aepLoadingMedia: "正在载入影音素材：{name}",
 };

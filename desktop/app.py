@@ -144,12 +144,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not f or not Path(f).is_file():
                 self.send_error(404)
                 return
-            data = Path(f).read_bytes()
+            # 分段傳送（AE 專案的影片素材可能好幾百 MB）
+            size = Path(f).stat().st_size
             self.send_response(200)
             self.send_header("Content-Type", "application/octet-stream")
-            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Content-Length", str(size))
             self.end_headers()
-            self.wfile.write(data)
+            with open(f, "rb") as fp:
+                while True:
+                    chunk = fp.read(1 << 20)
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
             return
         return super().do_GET()
 
@@ -369,9 +375,18 @@ class DesktopBridge:
             report = aep2xke.convert(path, str(out), photos, 1600, str(fx_js) if fx_js.is_file() else None, prog)
             token = uuid.uuid4().hex
             LocalServer.files[token] = str(out)
+            # 影片／音訊素材沒有內嵌：每個給一個代號，網頁端從本機伺服器讀
+            media = {}
+            for fid, fpath in (report.get("media") or {}).items():
+                t = uuid.uuid4().hex
+                LocalServer.files[t] = fpath
+                media[fid] = f"/__xke_file/{t}"
+            report["media"] = media
             return {"status": "ok", "url": f"/__xke_file/{token}", "path": path, "report": report}
         except Exception as e:
             traceback.print_exc()
+            if type(e).__name__ == "TooOld":
+                return {"status": "tooOld", "message": str(e)}
             return {"status": "error", "message": f"{type(e).__name__}: {e}"}
         finally:
             self._aep = {"busy": False, "done": 0, "total": 0, "stage": ""}

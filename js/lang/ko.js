@@ -201,4 +201,6 @@ export default {
   aepNoComp: "이 AE 프로젝트에는 모듈로 만들 수 있는 컴포지션이 없습니다",
   aepDone: "애니메이션 모듈 {n}개를 \"내 모듈\"로 가져왔습니다",
   aepPartial: "아직 지원하지 않는 일부 내용은 건너뛰었습니다: {list}",
+  aepTooOld: "이 AE 프로젝트는 버전이 너무 오래되어 읽을 수 없습니다. After Effects에서 연 뒤 \"파일 ▸ 다른 이름으로 저장\"으로 저장하고 그 파일을 가져오세요.",
+  aepLoadingMedia: "미디어 불러오는 중: {name}",
 };

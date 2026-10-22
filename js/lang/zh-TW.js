@@ -201,4 +201,6 @@ export default {
   aepNoComp: "這個 AE 專案裡找不到可以做成模組的合成",
   aepDone: "已匯入 {n} 個動畫模組到「我的模組」",
   aepPartial: "部分內容工具還不支援，已略過：{list}",
+  aepTooOld: "這個 AE 專案的版本太舊，工具讀不懂。請先用 After Effects 開啟，選「檔案 ▸ 另存新檔」存一份，再匯入另存的檔案。",
+  aepLoadingMedia: "正在載入影音素材：{name}",
 };
