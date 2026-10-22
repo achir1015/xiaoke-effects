@@ -732,4 +732,7 @@ export default {
   'fxp.gammaAdjust.gamma': 'ガンマ',
   'fx.simpleChoker': 'チョーク',
   'fxp.simpleChoker.chokeMatte': 'マットのチョーク',
+  'fxp.fractalNoise.uniformScaling': "縦横比を固定",
+  'fxp.fractalNoise.scaleWidth': "スケールの幅",
+  'fxp.fractalNoise.scaleHeight': "スケールの高さ",
 };

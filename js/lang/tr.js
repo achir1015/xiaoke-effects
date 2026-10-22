@@ -186,4 +186,5 @@ export default {
   modSelDone: "Bitti",
   modSelTip: "Seçim modu: işaretlemek için tıklayın, sonra silmek / gizlemek için sağ tıklayın veya üstteki düğmeleri kullanın (Ctrl/⌘ veya Shift + tıklama da olur)",
   modAllHidden: "Tüm modüller gizli; göstermek için üstteki \"gizli\"ye tıklayın",
+  pOrient: "Yönlendirme",
 };

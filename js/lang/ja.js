@@ -186,4 +186,5 @@ export default {
   modSelDone: "完了",
   modSelTip: "選択モード：クリックでチェックし、右クリックか上のボタンで削除／非表示（Ctrl／⌘・Shift＋クリックも可）",
   modAllHidden: "すべてのモジュールが非表示です。上の「非表示」で表示できます",
+  pOrient: "方向",
 };

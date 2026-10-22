@@ -186,4 +186,5 @@ export default {
   modSelDone: "Terminé",
   modSelTip: "Mode sélection : cliquez pour cocher, puis clic droit ou boutons ci-dessus pour supprimer / masquer (Ctrl/⌘ ou Maj + clic fonctionne aussi)",
   modAllHidden: "Tous les modules sont masqués ; cliquez « masqués » ci-dessus pour les afficher",
+  pOrient: "Orientation",
 };

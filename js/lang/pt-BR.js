@@ -186,4 +186,5 @@ export default {
   modSelDone: "Concluir",
   modSelTip: "Modo de seleção: clique para marcar e use o clique direito ou os botões acima para excluir / ocultar (Ctrl/⌘ ou Shift + clique também funciona)",
   modAllHidden: "Todos os módulos estão ocultos; clique em \"ocultos\" acima para mostrá-los",
+  pOrient: "Orientação",
 };

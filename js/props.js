@@ -13,6 +13,7 @@ export function transformNodes(l) {
     l.camera.twoNode ? N(p + 'position', tr.position, t('pPosition'), 'vec3') : null,
     N('camera.poi', l.camera.poi, t('pPoi'), 'vec3'),
     !l.camera.twoNode ? N(p + 'position', tr.position, t('pPosition'), 'vec3') : null,
+    tr.orient ? N(p + 'orient', tr.orient, t('pOrient'), 'vec3') : null,
     N(p + 'rotX', tr.rotX, t('pRotX'), 'angle'), N(p + 'rotY', tr.rotY, t('pRotY'), 'angle'), N(p + 'rotation', tr.rotation, t('pRotZ'), 'angle'),
   ];
   if (l.type === 'light') return [N(p + 'position', tr.position, t('pPosition'), 'vec3'), N('light.poi', l.light.poi, t('pPoi'), 'vec3')];
@@ -20,6 +21,7 @@ export function transformNodes(l) {
     N(p + 'anchor', tr.anchor, t('pAnchor'), td ? 'vec3' : 'vec2', { short: 'A' }),
     N(p + 'position', tr.position, t('pPosition'), td ? 'vec3' : 'vec2', { short: 'P' }),
     N(p + 'scale', tr.scale, t('pScale'), td ? 'scale3' : 'scale', { short: 'S' }),
+    td && tr.orient ? N(p + 'orient', tr.orient, t('pOrient'), 'vec3', { short: 'R' }) : null,   // 方向（從 AE 匯入的圖層才有）
     td ? N(p + 'rotX', tr.rotX, t('pRotX'), 'angle', { short: 'R' }) : null,
     td ? N(p + 'rotY', tr.rotY, t('pRotY'), 'angle', { short: 'R' }) : null,
     N(p + 'rotation', tr.rotation, td ? t('pRotZ') : t('pRotation'), 'angle', { short: 'R' }),

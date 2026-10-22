@@ -719,4 +719,7 @@ export default {
   'fxp.gammaAdjust.gamma': 'Gama',
   'fx.simpleChoker': 'Basit Daraltıcı',
   'fxp.simpleChoker.chokeMatte': 'Matı Daralt',
+  'fxp.fractalNoise.uniformScaling': "Tekdüze ölçek",
+  'fxp.fractalNoise.scaleWidth': "Ölçek genişliği",
+  'fxp.fractalNoise.scaleHeight': "Ölçek yüksekliği",
 };

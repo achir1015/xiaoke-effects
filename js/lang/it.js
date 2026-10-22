@@ -186,4 +186,5 @@ export default {
   modSelDone: "Fine",
   modSelTip: "Modalità selezione: fai clic per spuntare, poi clic destro o i pulsanti sopra per eliminare / nascondere (anche Ctrl/⌘ o Maiusc + clic)",
   modAllHidden: "Tutti i moduli sono nascosti; fai clic su «nascosti» sopra per mostrarli",
+  pOrient: "Orientamento",
 };

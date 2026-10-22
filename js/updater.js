@@ -1,5 +1,5 @@
 // 版本更新：比對伺服器上的 version.json，有新版就提示「重新載入」（離線快取也一起更新）
-export const APP_VERSION = '1.4.2';
+export const APP_VERSION = '1.5.0';
 
 export async function checkWebUpdate() {
   try {

@@ -186,4 +186,5 @@ export default {
   modSelDone: "完成",
   modSelTip: "多选模式：点一下勾选，再右键或点上方按钮删除／隐藏（也可按住 Ctrl／⌘ 或 Shift 点选）",
   modAllHidden: "模块都已隐藏，点上方“已隐藏”可显示",
+  pOrient: "方向",
 };

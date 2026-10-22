@@ -732,4 +732,7 @@ export default {
   'fxp.gammaAdjust.gamma': 'غاما',
   'fx.simpleChoker': 'خانق بسيط',
   'fxp.simpleChoker.chokeMatte': 'خنق المُغطاة',
+  'fxp.fractalNoise.uniformScaling': "تحجيم موحّد",
+  'fxp.fractalNoise.scaleWidth': "عرض المقياس",
+  'fxp.fractalNoise.scaleHeight': "ارتفاع المقياس",
 };

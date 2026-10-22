@@ -732,4 +732,7 @@ export default {
   'fxp.gammaAdjust.gamma': 'Гамма',
   'fx.simpleChoker': 'Простое стягивание',
   'fxp.simpleChoker.chokeMatte': 'Стягивание маски',
+  'fxp.fractalNoise.uniformScaling': "Равномерный масштаб",
+  'fxp.fractalNoise.scaleWidth': "Ширина масштаба",
+  'fxp.fractalNoise.scaleHeight': "Высота масштаба",
 };

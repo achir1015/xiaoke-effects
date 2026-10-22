@@ -732,4 +732,7 @@ export default {
   'fxp.gammaAdjust.gamma': '감마',
   'fx.simpleChoker': '단순 초커',
   'fxp.simpleChoker.chokeMatte': '매트 경계 감소',
+  'fxp.fractalNoise.uniformScaling': "균일 비율",
+  'fxp.fractalNoise.scaleWidth': "비율 폭",
+  'fxp.fractalNoise.scaleHeight': "비율 높이",
 };

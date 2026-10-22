@@ -81,7 +81,14 @@ function layerApi(project, comp, l, t, depth) {
       return p => { const id = typeof p === 'number' ? def?.params[p - 1]?.id : p; const prop = e.params[id] || Object.values(e.params)[0]; return v(prop); };
     },
     text: l.text ? { get sourceText() { return v(l.text.text); } } : undefined,
-    toComp: p => M4.apply(layerWorld(project, comp, l, t), p),
+    // 3D 圖層：和 AE 一樣投影到合成畫面上的 2D 位置
+    toComp: p => {
+      const w = M4.apply(layerWorld(project, comp, l, t), [p[0] || 0, p[1] || 0, p[2] || 0]);
+      if (!l.threeD) return w;
+      const cam = activeCamera(project, comp, t), c = M4.apply(cam.view, w);
+      const z = c[2] || 1e-6;
+      return [cam.cw / 2 + c[0] * cam.zoom / z, cam.ch / 2 + c[1] * cam.zoom / z, 0];
+    },
     width: l.solid?.w || comp.w, height: l.solid?.h || comp.h,
   };
 }
@@ -100,9 +107,11 @@ export function localMatrix(l, ev) {
   const rz = ev(tr.rotation, 'r') * Math.PI / 180;
   let m = M4.trans(p[0], p[1], l.threeD ? p[2] || 0 : 0);
   if (l.threeD) {
-    m = M4.mul(m, M4.rotZ(rz));
-    m = M4.mul(m, M4.rotY(ev(tr.rotY, 'ry') * Math.PI / 180));
+    // 和 After Effects 相同：方向（Orientation）再 X、Y、Z 旋轉（點先轉 Z，最後轉 X）
+    if (tr.orient) { const o = ev(tr.orient, 'or'); m = M4.mul(m, M4.rotX(o[0] * Math.PI / 180)); m = M4.mul(m, M4.rotY(o[1] * Math.PI / 180)); m = M4.mul(m, M4.rotZ(o[2] * Math.PI / 180)); }
     m = M4.mul(m, M4.rotX(ev(tr.rotX, 'rx') * Math.PI / 180));
+    m = M4.mul(m, M4.rotY(ev(tr.rotY, 'ry') * Math.PI / 180));
+    m = M4.mul(m, M4.rotZ(rz));
   } else m = M4.mul(m, M4.rotZ(rz));
   m = M4.mul(m, M4.scale(s[0] / 100, s[1] / 100, l.threeD ? (s[2] ?? 100) / 100 : 1));
   return M4.mul(m, M4.trans(-a[0], -a[1], l.threeD ? -(a[2] || 0) : 0));
@@ -134,9 +143,10 @@ export function activeCamera(project, comp, t) {
   } else {
     const p = ev(cam.transform.position);
     let m = M4.mul(parentM, M4.trans(p[0], p[1], p[2] || 0));
-    m = M4.mul(m, M4.rotZ(ev(cam.transform.rotation) * Math.PI / 180));
-    m = M4.mul(m, M4.rotY(ev(cam.transform.rotY) * Math.PI / 180));
+    if (cam.transform.orient) { const o = ev(cam.transform.orient); m = M4.mul(m, M4.rotX(o[0] * Math.PI / 180)); m = M4.mul(m, M4.rotY(o[1] * Math.PI / 180)); m = M4.mul(m, M4.rotZ(o[2] * Math.PI / 180)); }
     m = M4.mul(m, M4.rotX(ev(cam.transform.rotX) * Math.PI / 180));
+    m = M4.mul(m, M4.rotY(ev(cam.transform.rotY) * Math.PI / 180));
+    m = M4.mul(m, M4.rotZ(ev(cam.transform.rotation) * Math.PI / 180));
     view = M4.invert(m);
   }
   return { view, zoom, cw: comp.w, ch: comp.h, layer: cam };
@@ -205,8 +215,18 @@ function layerSource(project, comp, l, t, ev, o, key) {
     case 'precomp': {
       const sub = getComp(project, l.comp);
       if (!sub || o.depth > 8) return null;
+      const st = sourceTime(l, t, makeEnv(project, comp, l, t));
+      if (l.collapse && sub.layers.some(x => x.threeD && x.type !== 'camera' && x.type !== 'light')) {
+        // 塌陷變形（AE 的 Collapse Transformations）：裡面的 3D 圖層用外層的鏡頭與燈光直接畫在外層畫面上，
+        // 這個圖層的變形併入每個子圖層的世界矩陣；畫好的結果再當成一張「已在合成座標」的來源（之後不再變形）
+        const cam = o.cam || activeCamera(project, comp, t);
+        const pre = M4.mul(o.pre || M4.ident(), layerWorld(project, comp, l, t));
+        const c = poolCanvas(key + 'src', comp.w * s, comp.h * s);
+        renderComp(project, sub, st, c, { ...o, depth: o.depth + 1, key: key + '>', transparent: true, collapse: { cam, lights: o.lights || activeLights(project, comp, t), pre, w: comp.w, h: comp.h } });
+        return { canvas: c, ox: 0, oy: 0, s, collapsed: true };
+      }
       const c = poolCanvas(key + 'src', sub.w * s, sub.h * s);
-      renderComp(project, sub, sourceTime(l, t, makeEnv(project, comp, l, t)), c, { ...o, depth: o.depth + 1, key: key + '>', transparent: true });
+      renderComp(project, sub, st, c, { ...o, depth: o.depth + 1, key: key + '>', transparent: true, collapse: null, pre: null, cam: null, lights: null });
       return { canvas: c, ox: 0, oy: 0, s };
     }
     case 'libbg': case 'libfx': {
@@ -350,7 +370,9 @@ function drawLayer(project, comp, l, t, ctx, o, cam, lights, key) {
   const mb = comp.motionBlur && l.motionBlur && o.motionBlur !== false;
   const op = clamp(ev(l.transform.opacity) / 100, 0, 1);
   const use3D = l.threeD ? cam : null;
-  if (!mb) { drawTransformed(ctx, src, layerWorld(project, comp, l, t), op, S, use3D, lights, outW, outH); return; }
+  // 塌陷的巢狀合成已經畫在合成座標上；塌陷合成裡的圖層要先套外層圖層的矩陣
+  const world = tt => src.collapsed ? M4.ident() : o.pre ? M4.mul(o.pre, layerWorld(project, comp, l, tt)) : layerWorld(project, comp, l, tt);
+  if (!mb) { drawTransformed(ctx, src, world(t), op, S, use3D, lights, outW, outH); return; }
   // 動態模糊：在快門時間內取多個時間點，平均疊加
   const N = Math.max(2, o.playing ? Math.min(4, comp.samples) : comp.samples);
   const sh = (comp.shutter || 180) / 360 / comp.fps;
@@ -359,7 +381,7 @@ function drawLayer(project, comp, l, t, ctx, o, cam, lights, key) {
   for (let i = 0; i < N; i++) {
     const tt = t + (i / (N - 1) - 0.5) * sh;
     const evi = evaluator(project, comp, l, tt, o.depth);
-    drawTransformed(ag, src, layerWorld(project, comp, l, tt), clamp(evi(l.transform.opacity) / 100, 0, 1) / N, S, use3D, lights, outW, outH);
+    drawTransformed(ag, src, world(tt), clamp(evi(l.transform.opacity) / 100, 0, 1) / N, S, use3D, lights, outW, outH);
   }
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(acc, 0, 0); ctx.restore();
 }
@@ -380,8 +402,9 @@ function lumaToAlpha(c, invert) {
 // opts：{ scale, playing, exact, depth, transparent, motionBlur, liveVideos, hideLayers:Set }
 export function renderComp(project, comp, t, out, opts = {}) {
   const o = { scale: 1, depth: 0, key: '', ...opts };
-  const S = o.scale;
-  const W = Math.max(1, Math.round(comp.w * S)), H = Math.max(1, Math.round(comp.h * S));
+  const S = o.scale, C = o.collapse;
+  // 塌陷時畫布是外層合成的大小，鏡頭／燈光用外層的
+  const W = Math.max(1, Math.round((C ? C.w : comp.w) * S)), H = Math.max(1, Math.round((C ? C.h : comp.h) * S));
   if (out.width !== W || out.height !== H) { out.width = W; out.height = H; }
   const ctx = out.getContext('2d');
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
@@ -390,12 +413,13 @@ export function renderComp(project, comp, t, out, opts = {}) {
   const anySolo = comp.layers.some(l => l.solo && l.visible);
   const mattes = matteUsers(comp);
   const has3D = comp.layers.some(l => l.threeD && l.type !== 'camera' && l.type !== 'light');
-  const cam = has3D ? activeCamera(project, comp, t) : null;
-  const lights = has3D ? activeLights(project, comp, t) : null;
+  const cam = C ? C.cam : has3D ? activeCamera(project, comp, t) : null;
+  const lights = C ? C.lights : has3D ? activeLights(project, comp, t) : null;
+  o.pre = C ? C.pre : null; o.cam = cam; o.lights = lights;
   // 3D 圖層依鏡頭距離由遠到近排序（連續的 3D 圖層一組）
   const order = [];
   for (let i = comp.layers.length - 1; i >= 0; i--) order.push(comp.layers[i]);
-  if (cam) sort3D(project, comp, order, t, cam);
+  if (cam) sort3D(project, comp, order, t, cam, o.pre);
   for (const l of order) {
     if (!l.visible || (anySolo && !l.solo) || !layerActive(l, t) || mattes.has(l.id) || o.hideLayers?.has(l.id)) continue;
     if (['null', 'camera', 'light', 'audio'].includes(l.type)) continue;
@@ -426,7 +450,7 @@ export function renderComp(project, comp, t, out, opts = {}) {
   }
 }
 
-function sort3D(project, comp, order, t, cam) {
+function sort3D(project, comp, order, t, cam, pre) {
   // 連續的 3D 圖層依鏡頭空間深度排序（遠的先畫）
   let i = 0;
   while (i < order.length) {
@@ -434,7 +458,7 @@ function sort3D(project, comp, order, t, cam) {
     let j = i; while (j < order.length && order[j].threeD) j++;
     const seg = order.slice(i, j).map(l => {
       let z = 0;
-      try { const w = layerWorld(project, comp, l, t); const c = M4.apply(M4.mul(cam.view, w), [l.transform.anchor.v[0], l.transform.anchor.v[1], 0]); z = c[2]; } catch { }
+      try { const w = pre ? M4.mul(pre, layerWorld(project, comp, l, t)) : layerWorld(project, comp, l, t); const c = M4.apply(M4.mul(cam.view, w), [l.transform.anchor.v[0], l.transform.anchor.v[1], 0]); z = c[2]; } catch { }
       return { l, z };
     });
     seg.sort((a, b) => b.z - a.z);

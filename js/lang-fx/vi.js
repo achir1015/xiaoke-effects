@@ -732,4 +732,7 @@ export default {
   'fxp.gammaAdjust.gamma': 'Gamma',
   'fx.simpleChoker': 'Thu hẹp đơn giản',
   'fxp.simpleChoker.chokeMatte': 'Thu hẹp mặt nạ',
+  'fxp.fractalNoise.uniformScaling': "Tỉ lệ đồng đều",
+  'fxp.fractalNoise.scaleWidth': "Độ rộng tỉ lệ",
+  'fxp.fractalNoise.scaleHeight': "Độ cao tỉ lệ",
 };

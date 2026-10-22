@@ -186,4 +186,5 @@ export default {
   modSelDone: "Xong",
   modSelTip: "Chế độ chọn: nhấp để đánh dấu, rồi nhấp chuột phải hoặc dùng nút phía trên để xóa / ẩn (cũng có thể Ctrl/⌘ hoặc Shift + nhấp)",
   modAllHidden: "Tất cả mô-đun đã bị ẩn; nhấp \"đã ẩn\" phía trên để hiện",
+  pOrient: "Hướng",
 };

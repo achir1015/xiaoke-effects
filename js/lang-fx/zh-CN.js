@@ -732,4 +732,7 @@ export default {
   'fxp.gammaAdjust.gamma': 'Gamma',
   'fx.simpleChoker': '简单阻塞工具',
   'fxp.simpleChoker.chokeMatte': '阻塞遮罩',
+  'fxp.fractalNoise.uniformScaling': "统一缩放",
+  'fxp.fractalNoise.scaleWidth': "缩放宽度",
+  'fxp.fractalNoise.scaleHeight': "缩放高度",
 };

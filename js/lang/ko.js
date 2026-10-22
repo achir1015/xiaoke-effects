@@ -186,4 +186,5 @@ export default {
   modSelDone: "완료",
   modSelTip: "선택 모드: 클릭해 체크한 뒤 오른쪽 클릭이나 위 버튼으로 삭제/숨기기(Ctrl/⌘ 또는 Shift+클릭도 가능)",
   modAllHidden: "모든 모듈이 숨겨져 있습니다. 위의 \"숨김\"을 눌러 표시하세요",
+  pOrient: "방향",
 };

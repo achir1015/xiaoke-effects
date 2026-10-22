@@ -186,4 +186,5 @@ export default {
   modSelDone: "完成",
   modSelTip: "多選模式：點一下勾選，再按右鍵或上方按鈕刪除／隱藏（也可按住 Ctrl／⌘ 或 Shift 點選）",
   modAllHidden: "模組都已隱藏，按上方「已隱藏」可顯示",
+  pOrient: "方向",
 };

@@ -186,4 +186,5 @@ export default {
   modSelDone: "Done",
   modSelTip: "Selection mode: click to tick, then right-click or use the buttons above to delete / hide (Ctrl/⌘ or Shift + click also works)",
   modAllHidden: "All modules are hidden; click \"hidden\" above to show them",
+  pOrient: "Orientation",
 };

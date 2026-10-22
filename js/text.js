@@ -96,7 +96,7 @@ export function layoutText(tx, ev) {
   });
   // 垂直置中：整段文字的中心在 y=0（基線位置 = 字高約 0.35em 往下）
   const blockH = (lines.length - 1) * lead;
-  const dy = tx.vAlign === 'top' ? size * 0.8 : tx.vAlign === 'bottom' ? -blockH : -blockH / 2 + size * 0.35;
+  const dy = tx.vAlign === 'baseline' ? 0 : tx.vAlign === 'top' ? size * 0.8 : tx.vAlign === 'bottom' ? -blockH : -blockH / 2 + size * 0.35;   // baseline：第一行基線在 y=0（AE 點文字）
   for (const ch of chars) ch.y += dy;
 
   const fill = ev(tx.fill), stroke = ev(tx.stroke), sw = ev(tx.strokeW);
